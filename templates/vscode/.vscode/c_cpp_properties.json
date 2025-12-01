@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "MCF52233",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/include"
+            ],
+            "defines": [
+                "__mcf52235__",
+                "__COLDFIRE__"
+            ],
+            "compilerPath": "/usr/bin/m68k-elf-gcc",
+            "compilerArgs": [
+                "-mcpu=52235",
+                "-msoft-float"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}

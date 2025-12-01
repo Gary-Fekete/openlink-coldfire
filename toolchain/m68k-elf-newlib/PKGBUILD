@@ -1,0 +1,49 @@
+# Maintainer: OpenLink ColdFire Project
+# Modified for ColdFire V2 support (MCF52xxx series)
+# Multilib enabled for all ColdFire variants
+# Original by: Jesus Alonso <doragasu at hotmail dot com>
+
+_target=m68k-elf
+# Multilib enabled - supports all m68k/ColdFire variants
+pkgname=${_target}-newlib
+# Latest version 4.4.0.20231231 does not build with GCC 14.1, so stay in previous release
+pkgver=4.5.0
+_suffix=.20241231
+pkgrel=1
+pkgdesc="C library for bare metal systems (${_target})."
+arch=(any)
+url="https://sourceware.org/newlib/"
+license=('BSD')
+groups=(devel)
+depends=("${_target}-binutils")
+makedepends=("${_target}-gcc-bootstrap>=4.3.0")
+options=('!makeflags' '!strip' 'staticlibs' '!libtool')
+PKGEXT="pkg.tar.zst"
+source=("ftp://sourceware.org/pub/newlib/newlib-${pkgver}${_suffix}.tar.gz")
+sha512sums=('d391ea3ac68ddb722909ef790f81ba4d6c35d9b2e0fcdb029f91a6c47db9ee94a686a2bdff211fb84025e1a317e257acfa59abda3fd2bc6609966798e1c604dc')
+
+prepare() {
+  mkdir ${srcdir}/newlib-build
+}
+
+build() {
+  cd ${srcdir}/newlib-build
+
+  # Should remove -Wno-implicit-function-declaration and -Wno-implicit-int when newlib fixes the build
+  export CFLAGS_FOR_TARGET="-Os -g -ffunction-sections -fdata-sections -fomit-frame-pointer -ffast-math -Wno-implicit-function-declaration -Wno-implicit-int"
+  ../newlib-${pkgver}${_suffix}/configure \
+    --target=${_target} \
+    --prefix=/usr \
+    --disable-newlib-supplied-syscalls \
+    --enable-multilib \
+    --disable-nls
+
+  make
+}
+
+package() {
+    cd ${srcdir}/newlib-build
+    DESTDIR=${pkgdir}/ make install
+    # usr/share/info/porting.info.gz conflicts with newlib installs for other architectures
+    rm -r ${pkgdir}/usr/share
+}

@@ -1,0 +1,76 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug MCF52233",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/firmware.elf",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/m68k-elf-gdb",
+            "miDebuggerServerAddress": "localhost:3333",
+            "stopAtEntry": true,
+            "setupCommands": [
+                {
+                    "description": "Set architecture",
+                    "text": "set architecture m68k:521x",
+                    "ignoreFailures": false
+                },
+                {
+                    "description": "Enable pretty printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set mem inaccessible-by-default off",
+                    "text": "set mem inaccessible-by-default off",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Flash and Start GDB Server"
+        },
+        {
+            "name": "Attach to Running Target",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/firmware.elf",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/m68k-elf-gdb",
+            "miDebuggerServerAddress": "localhost:3333",
+            "stopAtEntry": false,
+            "setupCommands": [
+                {
+                    "description": "Set architecture",
+                    "text": "set architecture m68k:521x",
+                    "ignoreFailures": false
+                }
+            ]
+        },
+        {
+            "name": "Debug (No Flash)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/firmware.elf",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/m68k-elf-gdb",
+            "miDebuggerServerAddress": "localhost:3333",
+            "stopAtEntry": true,
+            "setupCommands": [
+                {
+                    "description": "Set architecture",
+                    "text": "set architecture m68k:521x",
+                    "ignoreFailures": false
+                },
+                {
+                    "description": "Enable pretty printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Start GDB Server"
+        }
+    ]
+}

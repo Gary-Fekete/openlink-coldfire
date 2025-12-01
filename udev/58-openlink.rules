@@ -1,0 +1,5 @@
+# OpenLink ColdFire USB Debug Probe
+# USB-ML-12 Multilink (VID: 0x1357, PID: 0x0503)
+# This rule grants user access to the USB device without requiring root
+
+SUBSYSTEMS=="usb", ATTR{idVendor}=="1357", ATTR{idProduct}=="0503", MODE="0666", TAG+="uaccess"

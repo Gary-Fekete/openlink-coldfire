@@ -1,0 +1,164 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build",
+            "type": "shell",
+            "command": "make",
+            "args": ["all"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Clean",
+            "type": "shell",
+            "command": "make",
+            "args": ["clean"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Rebuild",
+            "type": "shell",
+            "command": "make",
+            "args": ["clean", "all"],
+            "group": "build",
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "Start GDB Server",
+            "type": "shell",
+            "command": "m68k-gdbserver",
+            "args": ["--gdb", "-p", "3333"],
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^OpenLink",
+                    "endsPattern": "^Waiting for GDB connection"
+                }
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Stop GDB Server",
+            "type": "shell",
+            "command": "pkill",
+            "args": ["-f", "m68k-gdbserver"],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "silent"
+            }
+        },
+        {
+            "label": "Flash",
+            "type": "shell",
+            "command": "m68k-gdbserver",
+            "args": [
+                "--program",
+                "${workspaceFolder}/build/firmware.elf",
+                "--verify"
+            ],
+            "dependsOn": "Build",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Flash and Start GDB Server",
+            "type": "shell",
+            "dependsOn": ["Build"],
+            "dependsOrder": "sequence",
+            "command": "bash",
+            "args": [
+                "-c",
+                "pkill -9 m68k-gdbserver 2>/dev/null || true; sleep 0.5; m68k-gdbserver --program ${workspaceFolder}/build/firmware.elf --verify && exec m68k-gdbserver --gdb -p 3333"
+            ],
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^=+$",
+                    "endsPattern": "^Waiting for GDB connection"
+                }
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Erase Flash",
+            "type": "shell",
+            "command": "m68k-gdbserver",
+            "args": ["--erase"],
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Flash Binary",
+            "type": "shell",
+            "command": "m68k-gdbserver",
+            "args": [
+                "--program",
+                "${input:binaryFile}",
+                "--base",
+                "${input:baseAddress}",
+                "--verify"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "binaryFile",
+            "type": "promptString",
+            "description": "Path to binary file (.bin, .elf, .s19)",
+            "default": "${workspaceFolder}/build/firmware.bin"
+        },
+        {
+            "id": "baseAddress",
+            "type": "promptString",
+            "description": "Base address for binary files",
+            "default": "0x00000000"
+        }
+    ]
+}

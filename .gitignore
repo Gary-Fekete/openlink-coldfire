@@ -1,0 +1,55 @@
+# Build artifacts
+m68k-gdbserver
+*.o
+*.d
+*.a
+
+# Flashloader build artifacts (regenerated from source)
+flashloader/*.elf
+flashloader/*.bin
+flashloader/*.lst
+flashloader/*.map
+
+# Generated header (regenerated from flashloader.elf)
+src/flashloader_binary.h
+
+# Template build directories
+templates/vscode/build/
+templates/eclipse/Debug/
+templates/eclipse/Release/
+
+# Toolchain build directories (makepkg artifacts)
+toolchain/*/src/
+toolchain/*/pkg/
+toolchain/*/*.tar.xz
+toolchain/*/*.tar.xz.sig
+toolchain/*/*.tar.gz
+toolchain/*/*.tar.gz.sig
+toolchain/*/*.pkg.tar.zst
+toolchain/*/*.pkg.tar.xz
+
+# Editor files
+*.swp
+*~
+.*.sw?
+\#*\#
+.\#*
+
+# IDE files
+.idea/
+*.code-workspace
+
+# Test binaries (not source)
+test_*
+!test_*.c
+
+# macOS
+.DS_Store
+
+# Debug files
+*.dSYM/
+core
+
+# Development notes (internal only)
+FLASHLOADER_INTEGRATION_PLAN.md
+GDBSERVER_STATE_MACHINE.md
