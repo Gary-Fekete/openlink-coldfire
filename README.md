@@ -44,11 +44,20 @@ All variants: 256KB Flash, 32KB SRAM
 **Arch Linux:**
 ```bash
 sudo pacman -S libusb base-devel
+
+# For 32-bit support (required for toolchain):
+# Enable multilib repository in /etc/pacman.conf, then:
+sudo pacman -S lib32-glibc lib32-libusb
 ```
 
 **Debian/Ubuntu:**
 ```bash
 sudo apt install libusb-1.0-0-dev build-essential
+
+# For 32-bit support (required for toolchain):
+sudo dpkg --add-architecture i386
+sudo apt update
+sudo apt install libc6:i386 libusb-1.0-0:i386
 ```
 
 ### Installing the m68k-elf Toolchain
