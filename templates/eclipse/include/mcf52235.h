@@ -1,7 +1,24 @@
 /*
  * MCF52235 Register Definitions
  *
- * Minimal header for M52233DEMO board
+ * OpenLink ColdFire - Open Source ColdFire/M68K Debug Tools
+ * Copyright (C) 2025 Gary Fekete
+ *
+ * This is the main header for MCF52233/MCF52235 development.
+ * It provides both simple direct register access (backward compatible)
+ * and comprehensive peripheral headers via the mcf5223/ directory.
+ *
+ * Usage Options:
+ *   1. Simple: Just include this file for basic register access
+ *      #include "mcf52235.h"
+ *
+ *   2. Full:   Define MCF5223_FULL_HEADERS before including
+ *      #define MCF5223_FULL_HEADERS
+ *      #include "mcf52235.h"
+ *
+ *   3. Direct: Include specific peripheral headers
+ *      #include "mcf5223/mcf5223_uart.h"
+ *
  * Full definitions available in Freescale/NXP MCF52235RM.pdf
  */
 
@@ -10,8 +27,28 @@
 
 #include <stdint.h>
 
-/* Base addresses */
+/* Include common ColdFire definitions */
+#include "mcf5xxx.h"
+
+/*********************************************************************
+ * Base addresses
+ *********************************************************************/
+
 #define IPSBAR              0x40000000
+
+/*********************************************************************
+ * Full peripheral headers (optional)
+ * Define MCF5223_FULL_HEADERS to include all comprehensive headers
+ *********************************************************************/
+
+#ifdef MCF5223_FULL_HEADERS
+#include "mcf5223/mcf5223.h"
+#else
+
+/*********************************************************************
+ * Simple register definitions for quick development
+ * These provide direct access to commonly used registers
+ *********************************************************************/
 
 /* System Control Module (SCM) */
 #define SCM_BASE            (IPSBAR + 0x000000)
@@ -25,23 +62,24 @@
 #define ROCR                (*(volatile uint16_t *)(CLOCK_BASE + 0x04))
 #define CCHR                (*(volatile uint8_t  *)(CLOCK_BASE + 0x08))
 
-/* GPIO - Port TC (directly accessible I/O) */
+/* GPIO Base */
 #define GPIO_BASE           (IPSBAR + 0x100000)
 
+/* GPIO - Port TC (M52233DEMO LEDs) */
 #define PORTTC              (*(volatile uint8_t *)(GPIO_BASE + 0x0F))
-#define DDRTC               (*(volatile uint8_t *)(GPIO_BASE + 0x23))
-#define SETTC               (*(volatile uint8_t *)(GPIO_BASE + 0x37))
-#define CLRTC               (*(volatile uint8_t *)(GPIO_BASE + 0x4B))
+#define DDRTC               (*(volatile uint8_t *)(GPIO_BASE + 0x27))
+#define SETTC               (*(volatile uint8_t *)(GPIO_BASE + 0x3F))
+#define CLRTC               (*(volatile uint8_t *)(GPIO_BASE + 0x57))
 
 /* GPIO - Port TD */
 #define PORTTD              (*(volatile uint8_t *)(GPIO_BASE + 0x10))
-#define DDRTD               (*(volatile uint8_t *)(GPIO_BASE + 0x24))
-#define SETTD               (*(volatile uint8_t *)(GPIO_BASE + 0x38))
-#define CLRTD               (*(volatile uint8_t *)(GPIO_BASE + 0x4C))
+#define DDRTD               (*(volatile uint8_t *)(GPIO_BASE + 0x28))
+#define SETTD               (*(volatile uint8_t *)(GPIO_BASE + 0x40))
+#define CLRTD               (*(volatile uint8_t *)(GPIO_BASE + 0x58))
 
 /* GPIO Pin Assignment Registers */
-#define PTCPAR              (*(volatile uint8_t *)(GPIO_BASE + 0x5F))
-#define PTDPAR              (*(volatile uint8_t *)(GPIO_BASE + 0x60))
+#define PTCPAR              (*(volatile uint8_t *)(GPIO_BASE + 0x6F))
+#define PTDPAR              (*(volatile uint8_t *)(GPIO_BASE + 0x70))
 
 /* Programmable Interrupt Timer (PIT0) */
 #define PIT0_BASE           (IPSBAR + 0x150000)
@@ -91,34 +129,40 @@
 #define CFM_CMD_MASS_ERASE      0x41
 #define CFM_CMD_PROGRAM         0x20
 
-/* LED definitions for M52233DEMO board */
-/* LEDs are active-low on Port TC */
+#endif /* MCF5223_FULL_HEADERS */
+
+/*********************************************************************
+ * M52233DEMO Board Support
+ * LED definitions (always available)
+ *********************************************************************/
+
+/* LEDs on Port TC - accent LED1-LED4 accent controlled via PORTTC */
 #define LED1_BIT            0
 #define LED2_BIT            1
 #define LED3_BIT            2
 #define LED4_BIT            3
 
-#define LED1_ON()           (CLRTC = (1 << LED1_BIT))
-#define LED1_OFF()          (SETTC = (1 << LED1_BIT))
+#define LED1_ON()           (PORTTC |= (1 << LED1_BIT))
+#define LED1_OFF()          (PORTTC &= ~(1 << LED1_BIT))
 #define LED1_TOGGLE()       (PORTTC ^= (1 << LED1_BIT))
 
-#define LED2_ON()           (CLRTC = (1 << LED2_BIT))
-#define LED2_OFF()          (SETTC = (1 << LED2_BIT))
+#define LED2_ON()           (PORTTC |= (1 << LED2_BIT))
+#define LED2_OFF()          (PORTTC &= ~(1 << LED2_BIT))
 #define LED2_TOGGLE()       (PORTTC ^= (1 << LED2_BIT))
 
-#define LED3_ON()           (CLRTC = (1 << LED3_BIT))
-#define LED3_OFF()          (SETTC = (1 << LED3_BIT))
+#define LED3_ON()           (PORTTC |= (1 << LED3_BIT))
+#define LED3_OFF()          (PORTTC &= ~(1 << LED3_BIT))
 #define LED3_TOGGLE()       (PORTTC ^= (1 << LED3_BIT))
 
-#define LED4_ON()           (CLRTC = (1 << LED4_BIT))
-#define LED4_OFF()          (SETTC = (1 << LED4_BIT))
+#define LED4_ON()           (PORTTC |= (1 << LED4_BIT))
+#define LED4_OFF()          (PORTTC &= ~(1 << LED4_BIT))
 #define LED4_TOGGLE()       (PORTTC ^= (1 << LED4_BIT))
 
 /* Initialize LEDs */
 static inline void leds_init(void) {
     PTCPAR = 0x00;              /* GPIO function */
-    DDRTC |= 0x0F;              /* Output */
-    SETTC = 0x0F;               /* All LEDs off (active-low) */
+    DDRTC = 0x0F;               /* Output */
+    PORTTC = 0x00;              /* All LEDs off */
 }
 
 /* Simple delay loop */

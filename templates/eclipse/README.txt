@@ -2,7 +2,7 @@ MCF52233 ColdFire Template Project for Eclipse
 ==============================================
 
 This is a template project for developing firmware for the M52233DEMO
-board using Eclipse CDT with the m68k-elf toolchain.
+board using Eclipse IDE for Embedded C/C++ for Developers with the m68k-elf toolchain.
 
 Project Structure:
 ------------------

@@ -35,7 +35,7 @@ MCF_CFM_CFMCLKD = MCF_CFM_CFMCLKD_PRDIV8 | MCF_CFM_CFMCLKD_DIV(36);
 #include "mcf5223/mcf5223_uart.h"
 #include "mcf5223/mcf5223_gpio.h"
 
-// Only the included peripherals are available
+// Only the included peripherals that are available
 MCF_UART0_UTB = 'A';
 MCF_GPIO_SETTC = MCF_GPIO_PIN0;
 ```
@@ -132,7 +132,7 @@ Edit `.vscode/tasks.json` to change:
 
 ---
 
-## Eclipse CDT Setup
+## Eclipse IDE for Embedded C/C++ for Developers Setup
 
 ### Quick Start
 

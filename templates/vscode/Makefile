@@ -37,13 +37,10 @@ LDFLAGS += -nostartfiles
 C_SOURCES = $(wildcard src/*.c)
 S_SOURCES = $(wildcard startup/*.S)
 
-# Object files
-OBJECTS = $(addprefix $(BUILD_DIR)/,$(notdir $(C_SOURCES:.c=.o)))
-OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(S_SOURCES:.S=.o)))
-
-# VPATH for source files
-vpath %.c src
-vpath %.S startup
+# Object files - keep directory prefix to avoid name collisions
+C_OBJECTS = $(patsubst src/%.c,$(BUILD_DIR)/src_%.o,$(C_SOURCES))
+S_OBJECTS = $(patsubst startup/%.S,$(BUILD_DIR)/startup_%.o,$(S_SOURCES))
+OBJECTS = $(C_OBJECTS) $(S_OBJECTS)
 
 # Default target
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).bin $(BUILD_DIR)/$(TARGET).hex size
@@ -53,11 +50,11 @@ $(BUILD_DIR):
 	mkdir -p $@
 
 # Compile C files
-$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+$(BUILD_DIR)/src_%.o: src/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Assemble S files
-$(BUILD_DIR)/%.o: %.S | $(BUILD_DIR)
+$(BUILD_DIR)/startup_%.o: startup/%.S | $(BUILD_DIR)
 	$(AS) $(ASFLAGS) -c $< -o $@
 
 # Link

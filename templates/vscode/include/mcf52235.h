@@ -67,19 +67,19 @@
 
 /* GPIO - Port TC (M52233DEMO LEDs) */
 #define PORTTC              (*(volatile uint8_t *)(GPIO_BASE + 0x0F))
-#define DDRTC               (*(volatile uint8_t *)(GPIO_BASE + 0x23))
-#define SETTC               (*(volatile uint8_t *)(GPIO_BASE + 0x37))
-#define CLRTC               (*(volatile uint8_t *)(GPIO_BASE + 0x4B))
+#define DDRTC               (*(volatile uint8_t *)(GPIO_BASE + 0x27))
+#define SETTC               (*(volatile uint8_t *)(GPIO_BASE + 0x3F))
+#define CLRTC               (*(volatile uint8_t *)(GPIO_BASE + 0x57))
 
 /* GPIO - Port TD */
 #define PORTTD              (*(volatile uint8_t *)(GPIO_BASE + 0x10))
-#define DDRTD               (*(volatile uint8_t *)(GPIO_BASE + 0x24))
-#define SETTD               (*(volatile uint8_t *)(GPIO_BASE + 0x38))
-#define CLRTD               (*(volatile uint8_t *)(GPIO_BASE + 0x4C))
+#define DDRTD               (*(volatile uint8_t *)(GPIO_BASE + 0x28))
+#define SETTD               (*(volatile uint8_t *)(GPIO_BASE + 0x40))
+#define CLRTD               (*(volatile uint8_t *)(GPIO_BASE + 0x58))
 
 /* GPIO Pin Assignment Registers */
-#define PTCPAR              (*(volatile uint8_t *)(GPIO_BASE + 0x5F))
-#define PTDPAR              (*(volatile uint8_t *)(GPIO_BASE + 0x60))
+#define PTCPAR              (*(volatile uint8_t *)(GPIO_BASE + 0x6F))
+#define PTDPAR              (*(volatile uint8_t *)(GPIO_BASE + 0x70))
 
 /* Programmable Interrupt Timer (PIT0) */
 #define PIT0_BASE           (IPSBAR + 0x150000)
@@ -136,33 +136,33 @@
  * LED definitions (always available)
  *********************************************************************/
 
-/* LEDs are active-low on Port TC */
+/* LEDs on Port TC - accent LED1-LED4 accent controlled via PORTTC */
 #define LED1_BIT            0
 #define LED2_BIT            1
 #define LED3_BIT            2
 #define LED4_BIT            3
 
-#define LED1_ON()           (CLRTC = (1 << LED1_BIT))
-#define LED1_OFF()          (SETTC = (1 << LED1_BIT))
+#define LED1_ON()           (PORTTC |= (1 << LED1_BIT))
+#define LED1_OFF()          (PORTTC &= ~(1 << LED1_BIT))
 #define LED1_TOGGLE()       (PORTTC ^= (1 << LED1_BIT))
 
-#define LED2_ON()           (CLRTC = (1 << LED2_BIT))
-#define LED2_OFF()          (SETTC = (1 << LED2_BIT))
+#define LED2_ON()           (PORTTC |= (1 << LED2_BIT))
+#define LED2_OFF()          (PORTTC &= ~(1 << LED2_BIT))
 #define LED2_TOGGLE()       (PORTTC ^= (1 << LED2_BIT))
 
-#define LED3_ON()           (CLRTC = (1 << LED3_BIT))
-#define LED3_OFF()          (SETTC = (1 << LED3_BIT))
+#define LED3_ON()           (PORTTC |= (1 << LED3_BIT))
+#define LED3_OFF()          (PORTTC &= ~(1 << LED3_BIT))
 #define LED3_TOGGLE()       (PORTTC ^= (1 << LED3_BIT))
 
-#define LED4_ON()           (CLRTC = (1 << LED4_BIT))
-#define LED4_OFF()          (SETTC = (1 << LED4_BIT))
+#define LED4_ON()           (PORTTC |= (1 << LED4_BIT))
+#define LED4_OFF()          (PORTTC &= ~(1 << LED4_BIT))
 #define LED4_TOGGLE()       (PORTTC ^= (1 << LED4_BIT))
 
 /* Initialize LEDs */
 static inline void leds_init(void) {
     PTCPAR = 0x00;              /* GPIO function */
-    DDRTC |= 0x0F;              /* Output */
-    SETTC = 0x0F;               /* All LEDs off (active-low) */
+    DDRTC = 0x0F;               /* Output */
+    PORTTC = 0x00;              /* All LEDs off */
 }
 
 /* Simple delay loop */

@@ -43,9 +43,10 @@ LDFLAGS += -Wl,-Map=$(BUILDDIR)/$(TARGET).map
 C_SOURCES = $(wildcard $(SRCDIR)/*.c)
 S_SOURCES = $(wildcard $(STARTUPDIR)/*.S)
 
-# Object files
-OBJECTS = $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(C_SOURCES))
-OBJECTS += $(patsubst $(STARTUPDIR)/%.S,$(BUILDDIR)/%.o,$(S_SOURCES))
+# Object files - prefix with directory name to avoid collisions
+C_OBJECTS = $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/src_%.o,$(C_SOURCES))
+S_OBJECTS = $(patsubst $(STARTUPDIR)/%.S,$(BUILDDIR)/startup_%.o,$(S_SOURCES))
+OBJECTS = $(C_OBJECTS) $(S_OBJECTS)
 
 # Default target
 all: $(BUILDDIR)/$(TARGET).elf size
@@ -55,12 +56,12 @@ $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
 
 # Compile C files
-$(BUILDDIR)/%.o: $(SRCDIR)/%.c | $(BUILDDIR)
+$(BUILDDIR)/src_%.o: $(SRCDIR)/%.c | $(BUILDDIR)
 	@echo 'Compiling: $<'
 	$(CC) -c $(CFLAGS) -MMD -MP -o $@ $<
 
 # Assemble startup files
-$(BUILDDIR)/%.o: $(STARTUPDIR)/%.S | $(BUILDDIR)
+$(BUILDDIR)/startup_%.o: $(STARTUPDIR)/%.S | $(BUILDDIR)
 	@echo 'Assembling: $<'
 	$(AS) -c $(ASFLAGS) -o $@ $<
 

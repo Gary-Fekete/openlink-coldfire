@@ -178,8 +178,7 @@ int validate_response(unsigned char *buffer, int length, int min_length, uint16_
     }
 
     // Unknown response format
-    fprintf(stderr, "Unknown response format: %02x %02x (expected 99 66 or 88 a5)\n",
-            buffer[0], buffer[1]);
+    fprintf(stderr, "Unknown response format: %02x %02x (expected 99 66 or 88 a5)\n", buffer[0], buffer[1]);
     return -1;
 }
 
@@ -207,7 +206,7 @@ int cmd_write_memory_byte_addr(libusb_device_handle *handle, uint32_t addr, uint
     // Data (16-bit format, upper byte is 00 for byte write)
     cmd[12] = 0x00;
     cmd[13] = data;
-    // CRITICAL: Do NOT zero bytes 14-255! They contain leftover response data
+    // CRITICAL: Do NOT zero-byte 14-255! They contain leftover response data
 
     return send_aa_command(handle, cmd, 256, "Write Memory Byte");
 }
@@ -289,7 +288,7 @@ int cmd_write_memory_word_addr(libusb_device_handle *handle, uint32_t addr, uint
     // Data (2 bytes, big-endian)
     cmd[10] = (data >> 8) & 0xFF;
     cmd[11] = data & 0xFF;
-    // CRITICAL: Do NOT zero bytes 12-255! They contain leftover response data
+    // CRITICAL: Do NOT zero-byte 12-255! They contain leftover response data
 
     return send_aa_command(handle, cmd, 256, "Write Memory Word");
 }
@@ -375,7 +374,7 @@ int cmd_write_memory_short_addr(libusb_device_handle *handle, uint16_t addr, uin
     cmd[10] = (data >> 8) & 0xFF;
     cmd[11] = data & 0xFF;
 
-    // CRITICAL: Do NOT zero bytes 12-255! They contain leftover response data
+    // CRITICAL: Do NOT zero-byte 12-255! They contain leftover response data
     // from the previous command.
 
     return send_aa_command(handle, cmd, 256, "Write Memory (16-bit addr)");
@@ -402,7 +401,7 @@ int cmd_write_memory_long_addr(libusb_device_handle *handle, uint32_t addr, uint
     cmd[11] = (data >> 16) & 0xFF;
     cmd[12] = (data >> 8) & 0xFF;
     cmd[13] = data & 0xFF;
-    // CRITICAL: Do NOT zero bytes 14-255! They contain leftover response data
+    // CRITICAL: Do NOT zero-byte 14-255! They contain leftover response data
 
     return send_aa_command(handle, cmd, 256, "Write Memory Long");
 }
@@ -434,7 +433,7 @@ int cmd_set_memory_window(libusb_device_handle *handle, uint32_t window_addr) {
     cmd[7] = (window_addr >> 16) & 0xFF;
     cmd[8] = (window_addr >> 8) & 0xFF;
     cmd[9] = (window_addr >> 0) & 0xFF;
-    // CRITICAL: Do NOT zero bytes 10-255! They contain leftover response data
+    // CRITICAL: Do NOT zero-byte 10-255! They contain leftover response data
 
     return send_aa_command(handle, cmd, 256, "Set Memory Window");
 }
@@ -790,7 +789,7 @@ int cmd_071b(libusb_device_handle *handle, uint32_t addr, uint16_t length,
     // Copy data to output buffer (data starts at offset 5: after 99 66 len:2 ee)
     memcpy(buffer, &g_cmd_buffer[5], length);
 
-    //     if (g_openlink_verbose) printf("✓ Read/Verify %d bytes from 0x%08X\n", length, addr);
+    //     if (g_openlink_verbose) printf("==> Read/Verify %d bytes from 0x%08X\n", length, addr);
     return 0;
 }
 
@@ -859,7 +858,7 @@ int cmd_download_block_chunk(libusb_device_handle *handle, uint32_t address, uns
     int total_size = 4 + 8 + length;
     unsigned char *cmd = malloc(total_size);
     if (!cmd) {
-        fprintf(stderr, "Error: failed to allocate %d bytes for chunk transfer\n", total_size);
+        fprintf(stderr, "Error: **FAILED to allocate %d bytes for chunk transfer\n", total_size);
         return -1;
     }
 
@@ -941,7 +940,7 @@ int cmd_download_block_single(libusb_device_handle *handle, uint32_t address, un
     int total_size = 12 + length;
     unsigned char *cmd = malloc(total_size);
     if (!cmd) {
-        fprintf(stderr, "Error: failed to allocate %d bytes for upload\n", total_size);
+        fprintf(stderr, "Error: **FAILED to allocate %d bytes for upload\n", total_size);
         return -1;
     }
 
@@ -1013,7 +1012,7 @@ int cmd_download_block_single(libusb_device_handle *handle, uint32_t address, un
 
     // Verify response (should be 99 66 00 03 ee)
     if (recv_length >= 5 && response[0] == 0x99 && response[1] == 0x66 && response[4] == 0xee) {
-    //         if (g_openlink_verbose) printf("✓ bb 66 response OK\n");
+    //         if (g_openlink_verbose) printf("==> bb 66 response OK\n");
     } else {
         fprintf(stderr, "WARNING: Unexpected bb 66 response: ");
         for (int i = 0; i < recv_length && i < 10; i++) {
@@ -1022,7 +1021,7 @@ int cmd_download_block_single(libusb_device_handle *handle, uint32_t address, un
         fprintf(stderr, "\n");
     }
 
-    //     if (g_openlink_verbose) printf("✓ Upload complete: %d bytes to 0x%08X\n", length, address);
+    //     if (g_openlink_verbose) printf("==> Upload complete: %d bytes to 0x%08X\n", length, address);
     return 0;
 }
 
@@ -1042,7 +1041,7 @@ int cmd_download_block(libusb_device_handle *handle, uint32_t address, unsigned 
         // Upload this chunk at address + offset
         int r = cmd_download_block_chunk(handle, address + offset, data + offset, chunk_len);
         if (r != 0) {
-            fprintf(stderr, "Failed to upload chunk at offset %d (address 0x%08X)\n",
+            fprintf(stderr, "**FAILED to upload chunk at offset %d (address 0x%08X)\n",
                     offset, address + offset);
             return -1;
         }
@@ -1056,7 +1055,7 @@ int cmd_download_block(libusb_device_handle *handle, uint32_t address, unsigned 
         }
     }
 
-    //     if (g_openlink_verbose) printf("✓ Upload complete: %d bytes to 0x%08X\n", length, address);
+    //     if (g_openlink_verbose) printf("==> Upload complete: %d bytes to 0x%08X\n", length, address);
     return 0;
 }
 
@@ -1160,6 +1159,50 @@ int cmd_07_14_write_bdm_reg(libusb_device_handle *handle, uint16_t reg, uint32_t
     return send_aa_command(handle, cmd, 256, "CMD 07 14 (Write BDM Register)");
 }
 
+/**
+ * CMD 07 14 - Write Debug Module Register (WDMREG)
+ *
+ * From MCF52235 Reference Manual: WDMREG uses format 0x2C{0x42 | DRc[4:0]}
+ * DRc is the 5-bit debug register code (e.g., 0x07 for TDR, 0x08 for PBR0)
+ *
+ * The USB protocol wraps this in cmd 07 14 with window base:
+ * Command: aa 55 00 0c 07 14 [0x2C] [0x42|DRc] 00 00 [reg_param:2] [value:4]
+ *
+ * NOTE: 0x2C = WDMREG opcode, 0x42 is the base value that gets OR'd with DRc[4:0]
+ */
+int cmd_07_14_write_debug_reg(libusb_device_handle *handle, uint16_t drc, uint32_t value) {
+    unsigned char *cmd = g_cmd_buffer;
+
+    cmd[0] = 0xaa;
+    cmd[1] = 0x55;
+    cmd[2] = 0x00;
+    cmd[3] = 0x0c;  // Length = 12 bytes
+    cmd[4] = 0x07;
+    cmd[5] = 0x14;
+
+    // WDMREG encoding: 0x2C{0x42 | DRc[4:0]}
+    // From MCF52235 Reference Manual: 0x2C is WDMREG opcode, 0x42 is base value
+    cmd[6] = 0x2C;
+    cmd[7] = 0x42 | (drc & 0x1F);  // 0x42 + 5-bit register code
+    cmd[8] = 0x00;
+    cmd[9] = 0x00;
+
+    // Register parameter (matches DRc for consistency)
+    cmd[10] = 0x00;
+    cmd[11] = drc & 0xFF;
+
+    // Value (big-endian 32-bit)
+    cmd[12] = (value >> 24) & 0xFF;
+    cmd[13] = (value >> 16) & 0xFF;
+    cmd[14] = (value >> 8) & 0xFF;
+    cmd[15] = value & 0xFF;
+
+    printf("DEBUG WDMREG: DRc=0x%02X, value=0x%08X, cmd[6-7]=0x%02X%02X\n",
+           drc, value, cmd[6], cmd[7]);
+
+    return send_aa_command(handle, cmd, 256, "CMD 07 14 (WDMREG)");
+}
+
 // BDM Freeze Command
 // Checks if target CPU is halted (frozen)
 // Command: aa 55 00 04 04 7f fe 02
@@ -1223,12 +1266,23 @@ int cmd_bdm_freeze(libusb_device_handle *handle, uint8_t *is_frozen) {
         return -1;
     }
 
-    // Parse response: [99 66 or 88 a5] [len:2] ee [data...]
-    // The response data indicates freeze status
-    // If we got a valid response, check if there's additional data indicating frozen state
-    // From packet captures, the response length and data can indicate status
-    // A typical frozen response might have additional status bytes
-    *is_frozen = (actual_response_len > 5) ? 1 : 0;  // Simple heuristic
+    // Parse response: [99 66] [len:2] ee [status_byte]
+    // The status byte at offset 5 indicates the BDM state
+    // Based on packet capture analysis:
+    // Response format: 99 66 00 03 ee XX YY where XX indicates state
+    // 0x88 = running, 0x01 or 0x00 = halted
+    if (actual_response_len >= 6) {
+        uint8_t status = g_cmd_buffer[5];
+
+        // Status 0x88 means running, status 0x01/0x00 means halted
+        if (status == 0x01 || status == 0x00) {
+            *is_frozen = 1;  // Halted
+        } else {
+            *is_frozen = 0;  // Running (0x88 or other)
+        }
+    } else {
+        *is_frozen = 0;  // Assume running if we can't determine
+    }
     return 0;
 }
 
@@ -1252,7 +1306,7 @@ int cmd_bdm_reinit_after_execution(libusb_device_handle *handle) {
     cmd[6] = 0xf8;
     ret = send_aa_command(handle, cmd, 256, "Enter Mode 0xF8");
     if (ret != 0) {
-        fprintf(stderr, "Error: Enter Mode 0xF8 failed\n");
+        fprintf(stderr, "Error: Enter Mode 0xF8 **FAILED\n");
         return ret;
     }
 
@@ -1266,7 +1320,7 @@ int cmd_bdm_reinit_after_execution(libusb_device_handle *handle) {
     cmd[6] = 0xf0;
     ret = send_aa_command(handle, cmd, 256, "Enter Mode 0xF0");
     if (ret != 0) {
-        fprintf(stderr, "Error: Enter Mode 0xF0 failed\n");
+        fprintf(stderr, "Error: Enter Mode 0xF0 **FAILED\n");
         return ret;
     }
 
@@ -1280,7 +1334,7 @@ int cmd_bdm_reinit_after_execution(libusb_device_handle *handle) {
     cmd[6] = 0xf8;
     ret = send_aa_command(handle, cmd, 256, "Enter Mode 0xF8 (2nd)");
     if (ret != 0) {
-        fprintf(stderr, "Error: Enter Mode 0xF8 (2nd) failed\n");
+        fprintf(stderr, "Error: Enter Mode 0xF8 (2nd) **FAILED\n");
         return ret;
     }
 
@@ -1294,7 +1348,7 @@ int cmd_bdm_reinit_after_execution(libusb_device_handle *handle) {
     cmd[6] = 0x00;
     ret = send_aa_command(handle, cmd, 256, "Enable Memory Access");
     if (ret != 0) {
-        fprintf(stderr, "Error: Enable Memory Access failed\n");
+        fprintf(stderr, "Error: Enable Memory Access **FAILED\n");
         return ret;
     }
 
@@ -1404,7 +1458,7 @@ int cmd_read_memory_block(libusb_device_handle *handle, uint32_t addr, uint8_t *
     int actual_length;
     int ret = libusb_bulk_transfer(handle, ENDPOINT_OUT, cmd, 256, &actual_length, 5000);
     if (ret < 0) {
-        fprintf(stderr, "Error: Failed to send READ_MEMORY_BLOCK command: %s\n",
+        fprintf(stderr, "Error: **FAILED to send READ_MEMORY_BLOCK command: %s\n",
                 libusb_error_name(ret));
         return ret;
     }
@@ -1412,7 +1466,7 @@ int cmd_read_memory_block(libusb_device_handle *handle, uint32_t addr, uint8_t *
     // Receive response BACK INTO g_cmd_buffer
     ret = libusb_bulk_transfer(handle, ENDPOINT_IN, g_cmd_buffer, 256, &actual_length, 5000);
     if (ret < 0) {
-        fprintf(stderr, "Error: Failed to receive READ_MEMORY_BLOCK response: %s\n",
+        fprintf(stderr, "Error: **FAILED to receive READ_MEMORY_BLOCK response: %s\n",
                 libusb_error_name(ret));
         return ret;
     }
@@ -1429,7 +1483,7 @@ int cmd_read_memory_block(libusb_device_handle *handle, uint32_t addr, uint8_t *
     uint8_t status = g_cmd_buffer[4];
 
     if (status != 0xee) {
-        fprintf(stderr, "Error: Command failed with status 0x%02x\n", status);
+        fprintf(stderr, "Error: Command **FAILED with status 0x%02x\n", status);
         return -1;
     }
 
@@ -1489,7 +1543,7 @@ int cmd_07_17_setup_window(libusb_device_handle *handle, uint32_t addr) {
     int actual_length;
     int ret = libusb_bulk_transfer(handle, ENDPOINT_OUT, cmd, 256, &actual_length, 5000);
     if (ret < 0) {
-        fprintf(stderr, "Error: Failed to send CMD 07 17 Setup Window: %s\n",
+        fprintf(stderr, "Error: **FAILED to send CMD 07 17 Setup Window: %s\n",
                 libusb_error_name(ret));
         return ret;
     }
@@ -1545,7 +1599,7 @@ int cmd_07_1b(libusb_device_handle *handle, uint32_t addr, uint16_t size) {
     int actual_length;
     int ret = libusb_bulk_transfer(handle, ENDPOINT_OUT, cmd, 256, &actual_length, 5000);
     if (ret < 0) {
-        fprintf(stderr, "Error: Failed to send CMD 07 1B Memory Region Setup: %s\n",
+        fprintf(stderr, "Error: **FAILED to send CMD 07 1B Memory Region Setup: %s\n",
                 libusb_error_name(ret));
         return ret;
     }
@@ -1705,12 +1759,12 @@ int sram_pre_init(libusb_device_handle *handle) {
     // Lines 0-1: Device detection (twice)
     r = cmd_01_0b(handle);
     if (r != 0) {
-        fprintf(stderr, "Device detection (1) failed\n");
+        fprintf(stderr, "Device detection (1) **FAILED\n");
         return -1;
     }
     r = cmd_01_0b(handle);
     if (r != 0) {
-        fprintf(stderr, "Device detection (2) failed\n");
+        fprintf(stderr, "Device detection (2) **FAILED\n");
         return -1;
     }
 
@@ -1740,18 +1794,18 @@ int sram_pre_init(libusb_device_handle *handle) {
 
     r = cmd_enter_mode(handle, 0xFC);
     if (r != 0) return -1;
-    //     printf("✓ BDM initialized\n\n");
+    //     printf("==> BDM initialized\n\n");
 
     // Lines 11-19: Memory window setup (9x with 0x0000)
     //     printf("Step 3: Setting up memory windows (9x)...\n");
     for (int i = 0; i < 9; i++) {
         r = cmd_07_10(handle, 0x0000);
         if (r != 0) {
-            fprintf(stderr, "✗ Memory window setup %d/9 failed\n", i+1);
+            fprintf(stderr, " Memory window setup %d/9 **FAILED\n", i+1);
             return -1;
         }
     }
-    //     printf("✓ Memory windows configured\n\n");
+    //     printf("==> Memory windows configured\n\n");
 
     // Lines 20-34: BDM configuration and register writes
     //     printf("Step 4: BDM configuration...\n");
@@ -1801,14 +1855,14 @@ int sram_pre_init(libusb_device_handle *handle) {
 
     r = cmd_07_11(handle, 0x2980, 0x00, 0x00, 0x08, 0x0F);
     if (r != 0) return -1;
-    //     printf("✓ BDM configured\n\n");
+    //     printf("==> BDM configured\n\n");
 
     // Lines 35-52: Register initialization
     //     printf("Step 5: Register initialization...\n");
     for (uint16_t reg = 0x2180; reg <= 0x218F; reg++) {
         r = cmd_07_13(handle, reg, &reg_value);
         if (r != 0) {
-            fprintf(stderr, "✗ Failed to read register 0x%04X\n", reg);
+            fprintf(stderr, " **FAILED to read register 0x%04X\n", reg);
             return -1;
         }
     }
@@ -1823,7 +1877,7 @@ int sram_pre_init(libusb_device_handle *handle) {
     uint8_t mem_buffer[64];
     r = cmd_0717_read_memory(handle, 0x00000000, 64, mem_buffer, sizeof(mem_buffer));
     if (r != 0) return -1;
-    //     printf("✓ Registers initialized\n\n");
+    //     printf("==> Registers initialized\n\n");
 
     // Lines 54-75: Additional BDM setup
     //     printf("Step 6: Additional BDM setup...\n");
@@ -1890,7 +1944,7 @@ int sram_pre_init(libusb_device_handle *handle) {
     if (r != 0) return -1;
     r = cmd_write_bdm_reg(handle, 0x2080, 0xCF206089);
     if (r != 0) return -1;
-    //     printf("✓ Additional setup complete\n\n");
+    //     printf("==> Additional setup complete\n\n");
 
     // Lines 81-83: Initial verification reads
     //     printf("Step 7: Initial verification...\n");
@@ -1901,7 +1955,7 @@ int sram_pre_init(libusb_device_handle *handle) {
 
     r = cmd_write_bdm_reg(handle, 0x208F, 0xDEADBEEF);
     if (r != 0) return -1;
-    //     printf("✓ Initial verification complete\n\n");
+    //     printf("==> Initial verification complete\n\n");
 
     // Lines 84-109: BDM register configuration
     //     printf("Step 8: BDM register configuration...\n");
@@ -1943,7 +1997,7 @@ int sram_pre_init(libusb_device_handle *handle) {
 
     r = cmd_07_11(handle, 0x2980, 0x00, 0x00, 0x08, 0x01);
     if (r != 0) return -1;
-    //     printf("✓ BDM registers configured\n\n");
+    //     printf("==> BDM registers configured\n\n");
 
     // Lines 112-138: Initial SRAM test pattern writes
     //     printf("Step 9: Initial SRAM test patterns...\n");
@@ -1969,10 +2023,10 @@ int sram_pre_init(libusb_device_handle *handle) {
         r = cmd_071e_write_sram(handle, MARKER_ADDR, TEST_MARKER);
         if (r != 0) return -1;
     }
-    //     printf("✓ Initial SRAM test patterns written\n\n");
+    //     printf("==> Initial SRAM test patterns written\n\n");
 
     printf("===========================================\n");
-    //     printf("✓ SRAM Pre-Initialization Complete\n");
+    printf("==> SRAM Pre-Initialization Complete\n");
     printf("===========================================\n\n");
 
     return 0;
@@ -2018,25 +2072,25 @@ int sram_validation_sequence(libusb_device_handle *handle) {
     //         printf("  Writing 0x%08X to 0x%08X...\n", TEST_MARKER, MARKER_ADDR);
         r = cmd_071e_write_sram(handle, MARKER_ADDR, TEST_MARKER);
         if (r != 0) {
-            fprintf(stderr, "  ✗ Failed to write test marker\n");
+            fprintf(stderr, "   **FAILED to write test marker\n");
             return -1;
         }
-    //     //         printf("  ✓ Test marker written\n");
+    //         printf("  ==> Test marker written\n");
 
         // Step 2: Write marker address to target address
     //         printf("  Writing 0x%08X to 0x%08X...\n", MARKER_ADDR, target);
         r = cmd_071e_write_sram(handle, target, MARKER_ADDR);
         if (r != 0) {
-            fprintf(stderr, "  ✗ Failed to write to target address\n");
+            fprintf(stderr, "   **FAILED to write to target address\n");
             return -1;
         }
-    //         printf("  ✓ Target address written\n");
+    //         printf("  ==> Target address written\n");
 
         // Step 3: Verify target address with cmd_071b
     //         printf("  Verifying 0x%08X...\n", target);
         r = cmd_071b(handle, target, 4, verify_buffer, sizeof(verify_buffer));
         if (r != 0) {
-            fprintf(stderr, "  ✗ Failed to verify target address\n");
+            fprintf(stderr, "   **FAILED to verify target address\n");
             return -1;
         }
 
@@ -2045,17 +2099,17 @@ int sram_validation_sequence(libusb_device_handle *handle) {
     //         printf("  Read back: 0x%08X\n", read_value);
 
         if (read_value == MARKER_ADDR) {
-    //             printf("  ✓ Verification passed!\n");
+    //             printf("  ==> Verification passed!\n");
         } else {
             fprintf(stderr, "  ⚠ Warning: Expected 0x%08X, got 0x%08X\n", MARKER_ADDR, read_value);
         }
     }
 
-    //     //     printf("\n✓ Phase 1 complete (%d addresses tested)\n", num_targets);
+    //      printf("\n ==> Phase 1 complete (%d addresses tested)\n", num_targets);
 
     // Phase 2: Validation cycles
-    //     printf("\nPhase 2: Running validation cycles...\n");
-    //     printf("-------------------------------------------\n");
+    //      printf("\nPhase 2: Running validation cycles...\n");
+    //      printf("-------------------------------------------\n");
 
     // Simplified validation cycle (run 3 times as a test)
     for (int cycle = 0; cycle < 3; cycle++) {
@@ -2064,26 +2118,26 @@ int sram_validation_sequence(libusb_device_handle *handle) {
         // BDM configuration commands
         r = cmd_07_12(handle, 0x0000);
         if (r != 0) {
-            fprintf(stderr, "  ✗ cmd_07_12 failed\n");
+            fprintf(stderr, "   cmd_07_12 **FAILED\n");
             return -1;
         }
 
         r = cmd_07_11(handle, 0x2980, 0x00, 0x00, 0x08, 0x0f);
         if (r != 0) {
-            fprintf(stderr, "  ✗ cmd_07_11 failed (0x080f)\n");
+            fprintf(stderr, "   cmd_07_11 **FAILED (0x080f)\n");
             return -1;
         }
 
         r = cmd_07_11(handle, 0x2980, 0x00, 0x00, 0x08, 0x01);
         if (r != 0) {
-            fprintf(stderr, "  ✗ cmd_07_11 failed (0x0801)\n");
+            fprintf(stderr, "   cmd_07_11 **FAILED (0x0801)\n");
             return -1;
         }
 
         // Verify parameter address
         r = cmd_071b(handle, 0x200000B8, 4, verify_buffer, sizeof(verify_buffer));
         if (r != 0) {
-            fprintf(stderr, "  ✗ Failed to verify 0x200000B8\n");
+            fprintf(stderr, "   **FAILED to verify 0x200000B8\n");
             return -1;
         }
         uint32_t param_value = (verify_buffer[0] << 24) | (verify_buffer[1] << 16) |
@@ -2093,7 +2147,7 @@ int sram_validation_sequence(libusb_device_handle *handle) {
         // Read register 0x2D80
         r = cmd_07_13(handle, 0x2D80, &reg_value);
         if (r != 0) {
-            fprintf(stderr, "  ✗ Failed to read register 0x2D80\n");
+            fprintf(stderr, "   **FAILED to read register 0x2D80\n");
             return -1;
         }
     //         printf("  Register 0x2D80: 0x%08X\n", reg_value);
@@ -2101,51 +2155,51 @@ int sram_validation_sequence(libusb_device_handle *handle) {
         // BDM configuration
         r = cmd_07_11(handle, 0x2980, 0x00, 0x00, 0x08, 0x0f);
         if (r != 0) {
-            fprintf(stderr, "  ✗ cmd_07_11 failed (0x080f)\n");
+            fprintf(stderr, "   cmd_07_11 **FAILED (0x080f)\n");
             return -1;
         }
 
         // Verify test marker
-        r = cmd_071b(handle, 0xDEADBEEE, 4, verify_buffer, sizeof(verify_buffer));
+        r = cmd_071b(handle, 0xDEADBEEF, 4, verify_buffer, sizeof(verify_buffer));
         if (r != 0) {
-            fprintf(stderr, "  ✗ Failed to verify test marker\n");
+            fprintf(stderr, "   **FAILED to verify test marker\n");
             return -1;
         }
         uint32_t marker = (verify_buffer[0] << 24) | (verify_buffer[1] << 16) |
                           (verify_buffer[2] << 8) | verify_buffer[3];
-    //         printf("  Test marker value: 0x%08X\n", marker);
+                 printf("  Test marker value: 0x%08X\n", marker);
 
-        if (marker == 0xDEADBEEE) {
-    //     //             printf("  ✓ Test marker verified!\n");
+        if (marker == 0xDEADBEEF) {
+           printf("  ==> Test marker verified!\n");
         }
 
         // Read registers 0x2180-0x218F (16 sequential reads)
         for (uint16_t reg = 0x2180; reg <= 0x218F; reg++) {
             r = cmd_07_13(handle, reg, &reg_value);
             if (r != 0) {
-                fprintf(stderr, "  ✗ Failed to read register 0x%04X\n", reg);
+                fprintf(stderr, "   **FAILED to read register 0x%04X\n", reg);
                 return -1;
             }
         }
-    //         printf("  ✓ Read 16 registers\n");
+    //         printf("  ==> Read 16 registers\n");
 
         // Final BDM configuration for this cycle
         r = cmd_07_11(handle, 0x2980, 0x00, 0x00, 0x08, 0x0f);
         if (r != 0) {
-            fprintf(stderr, "  ✗ cmd_07_11 failed (0x080f)\n");
+            fprintf(stderr, "   cmd_07_11 **FAILED (0x080f)\n");
             return -1;
         }
 
         r = cmd_07_11(handle, 0x2980, 0x00, 0x00, 0x08, 0x0e);
         if (r != 0) {
-            fprintf(stderr, "  ✗ cmd_07_11 failed (0x080e)\n");
+            fprintf(stderr, "   cmd_07_11 **FAILED (0x080e)\n");
             return -1;
         }
 
-    //         printf("  ✓ Cycle %d complete\n", cycle + 1);
+    //         printf("  ==> Cycle %d complete\n", cycle + 1);
     }
 
-    //     //     printf("\n✓ Phase 2 complete (3 validation cycles)\n");
+    //         printf("\n ==> Phase 2 complete (3 validation cycles)\n");
 
     return 0;
 }
@@ -2161,14 +2215,14 @@ int sram_init_full(libusb_device_handle *handle) {
     // Step 1: Pre-initialization (lines 1-138) - silent
     r = sram_pre_init(handle);
     if (r != 0) {
-        fprintf(stderr, "SRAM pre-init failed\n");
+        fprintf(stderr, "SRAM pre-init **FAILED\n");
         return -1;
     }
 
     // Step 2: Validation sequence (lines 139-454) - silent
     r = sram_validation_sequence(handle);
     if (r != 0) {
-        fprintf(stderr, "SRAM validation failed\n");
+        fprintf(stderr, "SRAM validation **FAILED\n");
         return -1;
     }
 
@@ -2202,7 +2256,7 @@ int cmd_read_bdm_reg(libusb_device_handle *handle, uint16_t reg, uint16_t *value
     int actual_length;
     int ret = libusb_bulk_transfer(handle, ENDPOINT_OUT, cmd, 256, &actual_length, 5000);
     if (ret < 0) {
-        fprintf(stderr, "Error: Failed to send READ_BDM_REG command: %s\n",
+        fprintf(stderr, "Error: **FAILED to send READ_BDM_REG command: %s\n",
                 libusb_error_name(ret));
         return ret;
     }
@@ -2210,7 +2264,7 @@ int cmd_read_bdm_reg(libusb_device_handle *handle, uint16_t reg, uint16_t *value
     // Receive response BACK INTO g_cmd_buffer
     ret = libusb_bulk_transfer(handle, ENDPOINT_IN, g_cmd_buffer, 256, &actual_length, 5000);
     if (ret < 0) {
-        fprintf(stderr, "Error: Failed to receive READ_BDM_REG response: %s\n",
+        fprintf(stderr, "Error: **FAILED to receive READ_BDM_REG response: %s\n",
                 libusb_error_name(ret));
         return ret;
     }
@@ -2222,7 +2276,7 @@ int cmd_read_bdm_reg(libusb_device_handle *handle, uint16_t reg, uint16_t *value
     }
 
     if (g_cmd_buffer[4] != 0xee) {
-        fprintf(stderr, "Error: READ_BDM_REG command failed with status 0x%02x\n", g_cmd_buffer[4]);
+        fprintf(stderr, "Error: READ_BDM_REG command **FAILED with status 0x%02x\n", g_cmd_buffer[4]);
         return -1;
     }
 
@@ -2338,16 +2392,23 @@ int cmd_07_11_read_bdm_reg(libusb_device_handle *handle, uint16_t window, uint16
     // Send command
     int ret = libusb_bulk_transfer(handle, ENDPOINT_OUT, cmd, 256, &actual_length, 1000);
     if (ret < 0) {
-        printf("cmd_07_11_read_bdm_reg: send failed: %s\n", libusb_error_name(ret));
+        printf("cmd_07_11_read_bdm_reg: send **FAILED: %s\n", libusb_error_name(ret));
         return -1;
     }
 
     // Receive response
     ret = libusb_bulk_transfer(handle, ENDPOINT_IN, resp, 256, &actual_length, 1000);
     if (ret < 0) {
-        printf("cmd_07_11_read_bdm_reg: recv failed: %s\n", libusb_error_name(ret));
+        printf("cmd_07_11_read_bdm_reg: recv **FAILED: %s\n", libusb_error_name(ret));
         return -1;
     }
+
+    // Debug: print response bytes
+    printf("cmd_07_11 resp: ");
+    for (int i = 0; i < 12 && i < actual_length; i++) {
+        printf("%02x ", resp[i]);
+    }
+    printf("\n");
 
     // Check response format: 99 66 00 07 ee [value:4]
     if (resp[0] == 0x99 && resp[1] == 0x66 && resp[4] == 0xee) {
@@ -2738,14 +2799,16 @@ int cmd_07_a2(libusb_device_handle *handle, uint8_t param) {
 }
 
 /**
- * CMD 04 40 58 04 - BDM RESUME variant
+ * CMD 04 40 58 04 - BDM Initialization Step
  *
  * From capture: aa 55 00 04 04 40 58 04
- * Purpose: Resume target execution after BDM halt
+ * Purpose: Part of BDM initialization sequence during target_init_full().
+ *
+ * WARNING: This does NOT resume target execution! Use cmd_07_02_bdm_go() for that.
+ * The name "BDM Resume" in old captures was misleading - this is purely for init.
  */
 int cmd_04_40_58_04(libusb_device_handle *handle) {
-    unsigned char *cmd = g_cmd_buffer; // Use global persistent buffer
-    // memset(cmd, 0, 256); // REMOVED: Must preserve leftover data
+    unsigned char *cmd = g_cmd_buffer;
 
     cmd[0] = 0xaa;
     cmd[1] = 0x55;
@@ -2756,7 +2819,7 @@ int cmd_04_40_58_04(libusb_device_handle *handle) {
     cmd[6] = 0x58;  // Parameter 1
     cmd[7] = 0x04;  // Parameter 2
 
-    return send_aa_command(handle, cmd, 256, "CMD 04 40 58 04 (BDM Resume)");
+    return send_aa_command(handle, cmd, 256, "CMD 04 40 58 04 (BDM Init)");
 }
 
 /**
@@ -2913,7 +2976,7 @@ int cmd_setup_memory_windows_full(libusb_device_handle *handle) {
     if (r != 0) return -1;
     usleep(338);
 
-    //     printf("✓ Memory windows configured\n");
+    //     printf("==> Memory windows configured\n");
     return 0;
 }
 
@@ -2945,66 +3008,65 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     printf("Entering BDM mode (0xFC)...\n");
     r = cmd_enter_mode(handle, 0xFC);
     if (r != 0) {
-        fprintf(stderr, "Failed to enter BDM mode 0xFC\n");
+        fprintf(stderr, "**FAILED to enter BDM mode 0xFC\n");
         return -1;
     }
 
     printf("Sending configuration command...\n");
     r = cmd_07_a2(handle, 0x01);
     if (r != 0) {
-        fprintf(stderr, "Failed cmd_07_a2\n");
+        fprintf(stderr, "**FAILED cmd_07_a2\n");
         return -1;
     }
 
-    printf("Resuming target (BDM RESUME)...\n");
-    r = cmd_04_40_58_04(handle);
+    r = cmd_04_40_58_04(handle);  // BDM init step (not resume!)
     if (r != 0) {
-        fprintf(stderr, "Failed BDM RESUME\n");
+        fprintf(stderr, "**FAILED cmd_04_40_58_04\n");
         return -1;
     }
 
     printf("Sending BDM commands (04 7f fe 02)...\n");
     r = cmd_04_7f_fe_02(handle);
     if (r != 0) {
-        fprintf(stderr, "Failed cmd_04_7f_fe_02 (1st)\n");
+        fprintf(stderr, "**FAILED cmd_04_7f_fe_02 (1st)\n");
         return -1;
     }
 
     r = cmd_04_7f_fe_02(handle);
     if (r != 0) {
-        fprintf(stderr, "Failed cmd_04_7f_fe_02 (2nd)\n");
+        fprintf(stderr, "**FAILED cmd_04_7f_fe_02 (2nd)\n");
         return -1;
     }
 
     printf("Sending BDM status command...\n");
     r = cmd_07_95(handle);
     if (r != 0) {
-        fprintf(stderr, "Failed cmd_07_95\n");
+        fprintf(stderr, "**FAILED cmd_07_95\n");
         return -1;
     }
 
     printf("Sending BDM command (04 40 00 02)...\n");
     r = cmd_04_40_00_02(handle);
     if (r != 0) {
-        fprintf(stderr, "Failed cmd_04_40_00_02\n");
+        fprintf(stderr, "**FAILED cmd_04_40_00_02\n");
         return -1;
     }
 
     printf("Enabling memory access...\n");
     r = cmd_enable_memory_access(handle, 0x00);
     if (r != 0) {
-        fprintf(stderr, "Failed to enable memory access\n");
+        fprintf(stderr, "**FAILED to enable memory access\n");
         return -1;
     }
 
-    // CRITICAL: FORTH IDE calls this TWICE!
+    // CRITICAL: Call this TWICE!
     r = cmd_enable_memory_access(handle, 0x00);
     if (r != 0) {
-        fprintf(stderr, "Failed to enable memory access (2nd call)\n");
+        fprintf(stderr, "**FAILED to enable memory access (2nd call)\n");
         return -1;
     }
 
-    //     //     printf("✓ Phase 1 complete\n\n");
+    //     printf("==> Phase 1 complete\n\n");
 
     // Phase 2: Re-initialization Cycle
     //     printf("=== Phase 2: BDM Re-initialization ===\n");
@@ -3019,11 +3081,11 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     r |= cmd_enable_memory_access(handle, 0x00);  // Repeated
 
     if (r != 0) {
-        fprintf(stderr, "Failed during re-initialization cycle\n");
+        fprintf(stderr, "**FAILED during re-initialization cycle\n");
         return -1;
     }
 
-    //     //     printf("✓ Phase 2 complete\n\n");
+    //     printf("==> Phase 2 complete\n\n");
 
     // Phase 3: Mode Configuration
     //     printf("=== Phase 3: Mode Configuration ===\n");
@@ -3031,32 +3093,32 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     printf("Entering mode 0xF8...\n");
     r = cmd_enter_mode(handle, 0xF8);
     if (r != 0) {
-        fprintf(stderr, "Failed to enter mode 0xF8\n");
+        fprintf(stderr, "**FAILED to enter mode 0xF8\n");
         return -1;
     }
 
     printf("Entering mode 0xF0...\n");
     r = cmd_enter_mode(handle, 0xF0);
     if (r != 0) {
-        fprintf(stderr, "Failed to enter mode 0xF0\n");
+        fprintf(stderr, "**FAILED to enter mode 0xF0\n");
         return -1;
     }
 
     printf("Entering mode 0xF8 again...\n");
     r = cmd_enter_mode(handle, 0xF8);
     if (r != 0) {
-        fprintf(stderr, "Failed to enter mode 0xF8 (2nd)\n");
+        fprintf(stderr, "**FAILED to enter mode 0xF8 (2nd)\n");
         return -1;
     }
 
     printf("Polling BDM status...\n");
     r = cmd_07_12(handle, 0xFFFF);
     if (r != 0) {
-        fprintf(stderr, "Failed to poll BDM status\n");
+        fprintf(stderr, "**FAILED to poll BDM status\n");
         return -1;
     }
 
-    //     //     printf("✓ Phase 3 complete\n\n");
+    //     printf("==> Phase 3 complete\n\n");
 
     // Phase 4: Chip ID Detection
     //     printf("=== Phase 4: Chip ID Detection ===\n");
@@ -3064,25 +3126,13 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     printf("Reading chip ID from register 0x2D80...\n");
     r = cmd_07_13(handle, 0x2D80, &chip_id);
     if (r != 0) {
-        fprintf(stderr, "Failed to read chip ID\n");
+        fprintf(stderr, "**FAILED to read chip ID\n");
         return -1;
     }
 
     printf("Chip ID: 0x%08X\n", chip_id);
 
-    // Determine flash size based on chip ID
-    // MCF52233 variants:
-    // - 0xEE019000: MCF52233 with 256KB flash (M52230DEMO board)
-    // - Other IDs may indicate different variants
-    if ((chip_id & 0xFFFF0000) == 0xEE010000) {
-        *flash_size_kb = 256;
-        printf("Detected: MCF52233 with 256KB flash\n");
-    } else {
-        // Default to 256KB for M52230DEMO board
-        // Most MCF52233 variants have 256KB
-        *flash_size_kb = 256;
-        printf("Detected: Unknown chip ID, defaulting to 256KB\n");
-    }
+    // CIR will be read after system configuration when peripheral access is enabled
 
     // CRITICAL: Sends THREE cmd 07 14 commands before SRAM access works!
     // All three use window base 0x28800000
@@ -3092,7 +3142,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     printf("Writing register 0x080E = 0x00002700...\n");
     r = cmd_07_14_write_bdm_reg(handle, 0x080E, 0x00002700);
     if (r != 0) {
-        fprintf(stderr, "Failed to write register 0x080E!\n");
+        fprintf(stderr, "**FAILED to write register 0x080E!\n");
         return -1;
     }
 
@@ -3101,7 +3151,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     printf("Writing RAMBAR (0x0C05) = 0x20000221...\n");
     r = cmd_07_14_write_bdm_reg(handle, 0x0C05, 0x20000221);
     if (r != 0) {
-        fprintf(stderr, "Failed to initialize RAMBAR1!\n");
+        fprintf(stderr, "**FAILED to initialize RAMBAR1!\n");
         return -1;
     }
 
@@ -3109,11 +3159,11 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     printf("Writing register 0x080F = 0x000023F2...\n");
     r = cmd_07_14_write_bdm_reg(handle, 0x080F, 0x000023F2);
     if (r != 0) {
-        fprintf(stderr, "Failed to write register 0x080F!\n");
+        fprintf(stderr, "**FAILED to write register 0x080F!\n");
         return -1;
     }
 
-    //     printf("✓ BDM registers configured (0x080E, RAMBAR 0x0C05, 0x080F) with window base 0x28800000\n");
+    //     printf("==> BDM registers configured (0x080E, RAMBAR 0x0C05, 0x080F) with window base 0x28800000\n");
 
     // CRITICAL: Do a read from 0x2188 BEFORE the first SRAM write!
     // This might "prime" the BDM address mapping
@@ -3121,9 +3171,9 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     uint32_t dummy_value;
     r = cmd_07_13(handle, 0x2188, &dummy_value);
     if (r != 0) {
-        fprintf(stderr, "Warning: Failed to prime BDM with read from 0x2188\n");
+        fprintf(stderr, "Warning: **FAILED to prime BDM with read from 0x2188\n");
     } else {
-    //         printf("✓ BDM primed, read 0x%08X from address 0x2188\n", dummy_value);
+    //         printf("==> BDM primed, read 0x%08X from address 0x2188\n", dummy_value);
     }
 
     // Initialize FLASHBAR (Flash base address register)
@@ -3131,10 +3181,10 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     printf("Initializing FLASHBAR (Flash)...\n");
     r = cmd_write_bdm_reg(handle, 0x0C04, 0x00000061);
     if (r != 0) {
-        fprintf(stderr, "Failed to initialize FLASHBAR!\n");
+        fprintf(stderr, "**FAILED to initialize FLASHBAR!\n");
         return -1;
     }
-    //     printf("✓ FLASHBAR = 0x00000061 (Flash at 0x00000000 enabled)\n");
+    //     printf("==> FLASHBAR = 0x00000061 (Flash at 0x00000000 enabled)\n");
 
     // System Configuration (CRITICAL - required before RAM test!)
     printf("\nConfiguring system registers...\n");
@@ -3144,7 +3194,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     uint8_t clock_params[] = {0x19, 0x40, 0xFC, 0x0A, 0x00, 0x0A};
     r = cmd_07_11(handle, 0x1940, clock_params[2], clock_params[3], clock_params[4], clock_params[5]);
     if (r != 0) {
-        fprintf(stderr, "Warning: Failed to read clock config register\n");
+        fprintf(stderr, "Warning: **FAILED to read clock config register\n");
     }
 
     // Read secondary clock register (Line 24)
@@ -3152,7 +3202,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     uint8_t clock_params2[] = {0x19, 0x40, 0x40, 0x11, 0x00, 0x0A};
     r = cmd_07_11(handle, 0x1940, clock_params2[2], clock_params2[3], clock_params2[4], clock_params2[5]);
     if (r != 0) {
-        fprintf(stderr, "Warning: Failed to read secondary clock register\n");
+        fprintf(stderr, "Warning: **FAILED to read secondary clock register\n");
     }
 
     // Read system configuration register (Line 25)
@@ -3160,7 +3210,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     uint8_t sys_params[] = {0x19, 0x00, 0x40, 0x10, 0x00, 0x74};
     r = cmd_07_11(handle, 0x1900, sys_params[2], sys_params[3], sys_params[4], sys_params[5]);
     if (r != 0) {
-        fprintf(stderr, "Warning: Failed to read system config register\n");
+        fprintf(stderr, "Warning: **FAILED to read system config register\n");
     }
 
     // Write system configuration (Line 26) - CRITICAL!
@@ -3168,18 +3218,18 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     uint8_t write_params[] = {0x18, 0x00, 0x40, 0x10, 0x00, 0x74, 0x00, 0x0F};
     r = cmd_07_15(handle, 0x1800, write_params + 2, 6);  // Pass remaining parameters
     if (r != 0) {
-        fprintf(stderr, "Warning: Failed to write system config\n");
+        fprintf(stderr, "Warning: **FAILED to write system config\n");
     }
 
     // Poll BDM status after configuration (Line 27)
     printf("Polling BDM status after config...\n");
     r = cmd_07_12(handle, 0xFFFF);
     if (r != 0) {
-        fprintf(stderr, "Warning: Failed to poll BDM status\n");
+        fprintf(stderr, "Warning: **FAILED to poll BDM status\n");
     }
 
-    //     printf("✓ System configuration complete\n");
-    //     //     printf("✓ Phase 4 complete\n\n");
+    //     printf("==> System configuration complete\n");
+    //     printf("==> Phase 4 complete\n\n");
 
     // Phase 5: RAM Test
     //     printf("=== Phase 5: RAM Test ===\n");
@@ -3194,14 +3244,14 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     printf("Writing test pattern 0x%08X to 0x%08X...\n", test_pattern1, test_addr);
     r = cmd_write_memory_long_addr(handle, test_addr, test_pattern1);
     if (r != 0) {
-        fprintf(stderr, "Failed to write test pattern 1\n");
+        fprintf(stderr, "**FAILED to write test pattern 1\n");
         return -1;
     }
 
     printf("Reading back...\n");
     r = cmd_read_memory_long_addr(handle, test_addr, &read_value);
     if (r != 0) {
-        fprintf(stderr, "Failed to read back test pattern 1\n");
+        fprintf(stderr, "**FAILED to read back test pattern 1\n");
         return -1;
     }
 
@@ -3211,27 +3261,25 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
         fprintf(stderr, "This may not be critical for flash operations. Continuing anyway...\n");
         // Don't fail - RAM test format mismatch is not critical
     } else {
-    //         printf("✓ Test pattern 1 verified\n");
+    //         printf("==> Test pattern 1 verified\n");
 
         printf("Writing test pattern 0x%08X...\n", test_pattern2);
         r = cmd_write_memory_long_addr(handle, test_addr, test_pattern2);
         if (r != 0) {
-            fprintf(stderr, "Warning: Failed to write test pattern 2\n");
+            fprintf(stderr, "Warning: **FAILED to write test pattern 2\n");
         } else {
             r = cmd_read_memory_long_addr(handle, test_addr, &read_value);
             if (r != 0 || read_value != test_pattern2) {
-                fprintf(stderr, "Warning: RAM test 2 failed!\n");
+                fprintf(stderr, "Warning: RAM test 2 **FAILED!\n");
             } else {
-    //                 printf("✓ Test pattern 2 verified\n");
+    //                 printf("==> Test pattern 2 verified\n");
             }
         }
     }
 
-    //     //     printf("✓ Phase 5 complete (RAM test attempted)\n\n");
+    //          printf("==> Phase 5 complete (RAM test attempted)\n\n");
 
     // Phase 6: Final BDM Resume
-    //     printf("=== Phase 6: Final BDM Resume ===\n");
-
     r = cmd_07_a2(handle, 0x01);
     r |= cmd_04_40_58_04(handle);
     r |= cmd_04_7f_fe_02(handle);
@@ -3242,21 +3290,17 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     r |= cmd_enable_memory_access(handle, 0x00);
 
     if (r != 0) {
-        fprintf(stderr, "Failed during final BDM resume\n");
+        fprintf(stderr, "**FAILED during final BDM resume\n");
         return -1;
     }
 
-    //     //     printf("✓ Phase 6 complete\n\n");
-
     // Phase 7: Pre-Flashloader Mode Config
-    //     printf("=== Phase 7: Pre-Flashloader Mode Configuration ===\n");
-
     r = cmd_enter_mode(handle, 0xF8);
     r |= cmd_enter_mode(handle, 0xF0);
     r |= cmd_enter_mode(handle, 0xF8);
 
     if (r != 0) {
-        fprintf(stderr, "Failed during pre-flashloader mode config\n");
+        fprintf(stderr, "**FAILED during pre-flashloader mode config\n");
         return -1;
     }
 
@@ -3265,7 +3309,6 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     usleep(50000);
 
     // Phase 8: Memory Window Setup (CRITICAL FOR SRAM ACCESS)
-    //     printf("\n=== Phase 8: Memory Window Setup ===\n");
     printf("Configuring memory windows for SRAM access via short addresses...\n");
 
     r = cmd_07_12(handle, 0xFFFF);
@@ -3295,7 +3338,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     usleep(338);
 
     if (r != 0) {
-        fprintf(stderr, "Failed during memory window setup\n");
+        fprintf(stderr, "**FAILED during memory window setup\n");
         return -1;
     }
 
@@ -3303,28 +3346,93 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     printf("Verifying memory windows with test write...\n");
     r = cmd_write_memory_short_addr(handle, 0x2088, 0x200000B8);
     if (r != 0) {
-        fprintf(stderr, "Warning: Failed to write test pattern to 0x2088\n");
+        fprintf(stderr, "Warning: **FAILED to write test pattern to 0x2088\n");
     }
 
     uint32_t verify_val = 0;
     r = cmd_07_13(handle, 0x2188, &verify_val);
     if (r != 0) {
-        fprintf(stderr, "Warning: Failed to read from 0x2188\n");
+        fprintf(stderr, "Warning: **FAILED to read from 0x2188\n");
     } else {
         printf("Memory window test: Read 0x%08X from 0x2188\n", verify_val);
         if (verify_val == 0x200000B8) {
-    //             printf("✓✓✓ Memory windows are correctly configured!\n");
+    //             printf("==> Memory windows are correctly configured!\n");
         } else {
-            fprintf(stderr, "✗ WARNING: Memory windows may not be working correctly!\n");
+            fprintf(stderr, "  WARNING: Memory windows may not be working correctly!\n");
             fprintf(stderr, "  Expected 0x200000B8, got 0x%08X\n", verify_val);
         }
     }
 
-    //     //     printf("✓ Phase 8 complete\n\n");
-    //     //     printf("✓ Phase 7 complete\n\n");
+    //          printf("==> Phase 8 complete\n\n");
+    //          printf("==> Phase 7 complete\n\n");
+
+    // Read Chip Identification Register (CIR) at IPSBAR + 0x11000A
+    // CIR contains: PIN (Part ID Number) in bits 15-6, PRN (Part Revision) in bits 5-0
+    // IPSBAR = 0x40000000, so CIR = 0x4011000A
+    // Must be read AFTER memory windows are configured for peripheral access
+    // Note: Read 32-bit aligned address 0x40110008 (contains RCON at +0, CIR at +2)
+    // Big-endian: RCON in bits 31-16, CIR in bits 15-0
+    // IMPORTANT: CIR reads as 0 until firmware initializes IPSBAR with valid bit!
+    // We cannot read CIR reliably during BDM init before firmware runs.
+    // Use the BDM ID register (0x2D80) for chip detection instead.
+    uint32_t ccm_regs = 0;
+    uint16_t cir_value = 0;
+    r = cmd_read_memory_long_addr(handle, 0x40110008, &ccm_regs);
+    if (r == 0 && ccm_regs != 0) {
+        cir_value = ccm_regs & 0xFFFF;  // CIR is in lower 16 bits (big-endian, at offset 0xA)
+    }
+    const char *part_name = NULL;
+    int prn = -1;
+
+    if (r == 0 && cir_value != 0) {
+        uint16_t pin = (cir_value >> 6) & 0x3FF;  // Part ID Number (bits 15-6)
+        prn = cir_value & 0x3F;                   // Part Revision Number (bits 5-0)
+
+        switch (pin) {
+            case 0x48: part_name = "MCF52230"; break;
+            case 0x49: part_name = "MCF52231"; break;
+            case 0x4A: part_name = "MCF52233"; break;
+            case 0x4B: part_name = "MCF52234"; break;
+            case 0x4C: part_name = "MCF52235"; break;
+            default:   part_name = NULL;       break;
+        }
+
+        // Determine flash size based on part number
+        // MCF52230/52231: 64KB flash, 16KB SRAM
+        // MCF52233:       256KB flash, 32KB SRAM
+        // MCF52234/52235: 256KB flash, 32KB SRAM
+        switch (pin) {
+            case 0x48:  // MCF52230
+            case 0x49:  // MCF52231
+                *flash_size_kb = 64;
+                break;
+            case 0x4A:  // MCF52233
+            case 0x4B:  // MCF52234
+            case 0x4C:  // MCF52235
+            default:
+                *flash_size_kb = 256;
+                break;
+        }
+    }
+
+    // Fallback to BDM chip ID if CIR not available
+    // BDM CSR (0x2D80) format: 0x01900000 = MCF5223x family
+    if (part_name == NULL) {
+        *flash_size_kb = 256;
+        if ((chip_id & 0xFFF00000) == 0x01900000) {
+            part_name = "MCF5223x";  // Generic MCF5223x (CIR unavailable)
+        } else {
+            part_name = "ColdFire V2";
+        }
+    }
 
     printf("========================================\n");
     printf("  Initialization Complete!\n");
+    if (prn >= 0) {
+        printf("  Chip: %s (rev.%d)\n", part_name, prn);
+    } else {
+        printf("  Chip: %s\n", part_name);
+    }
     printf("  Flash Size: %u KB\n", *flash_size_kb);
     printf("========================================\n\n");
 

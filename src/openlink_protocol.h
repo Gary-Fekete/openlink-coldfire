@@ -52,11 +52,12 @@ int cmd_set_memory_window(libusb_device_handle *handle, uint32_t window_addr);
 
 // Flashloader Functions
 int cmd_download_block(libusb_device_handle *handle, uint32_t address, unsigned char *data, int length);
-int cmd_download_block_single(libusb_device_handle *handle, uint32_t address, unsigned char *data, int length);  // Single large transfer (matches CodeWarrior)
+int cmd_download_block_single(libusb_device_handle *handle, uint32_t address, unsigned char *data, int length);  // Single large transfer
 int cmd_download_block_chunk(libusb_device_handle *handle, uint32_t address, unsigned char *data, int length);  // Single chunk upload
 int cmd_bdm_resume(libusb_device_handle *handle);
 int cmd_07_02_bdm_go(libusb_device_handle *handle);  // BDM GO command to execute flashloader
 int cmd_07_14_write_bdm_reg(libusb_device_handle *handle, uint16_t reg, uint32_t value);  // Write BDM register (e.g., PC)
+int cmd_07_14_write_debug_reg(libusb_device_handle *handle, uint16_t reg, uint32_t value);  // Write debug register (TDR, PBR)
 int cmd_bdm_freeze(libusb_device_handle *handle, uint8_t *is_frozen);
 int cmd_bdm_halt(libusb_device_handle *handle);
 int cmd_bdm_reinit_after_execution(libusb_device_handle *handle);
@@ -71,7 +72,7 @@ int cmd_07_17_setup_window(libusb_device_handle *handle, uint32_t addr);
 int cmd_07_1b(libusb_device_handle *handle, uint32_t addr, uint16_t size);
 
 // Device Information
-int cmd_01_0b(libusb_device_handle *handle);  // Get Device Info (CodeWarrior sends this TWICE first)
+int cmd_01_0b(libusb_device_handle *handle);  // Get Device Info
 
 // BDM Configuration Functions
 int cmd_07_12(libusb_device_handle *handle, uint16_t param);
@@ -84,7 +85,7 @@ int cmd_07_11_read_bdm_reg(libusb_device_handle *handle, uint16_t window, uint16
 int cmd_read_pc(libusb_device_handle *handle, uint32_t *pc_value);
 int cmd_read_sr(libusb_device_handle *handle, uint32_t *sr_value);
 int cmd_write_pc(libusb_device_handle *handle, uint32_t pc_value);
-int cmd_07_16_write_pc(libusb_device_handle *handle, uint32_t pc_value);  // CodeWarrior style PC write before BDM GO
+int cmd_07_16_write_pc(libusb_device_handle *handle, uint32_t pc_value);  // PC write before BDM GO
 int cmd_07_15(libusb_device_handle *handle, uint16_t reg, uint8_t *params, int param_count);
 int cmd_07_a2(libusb_device_handle *handle, uint8_t param);
 int cmd_07_13(libusb_device_handle *handle, uint16_t reg, uint32_t *value);

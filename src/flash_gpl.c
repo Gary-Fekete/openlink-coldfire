@@ -2,7 +2,6 @@
  * GPL Flashloader Interface for OpenLink ColdFire
  *
  * Implementation of flash operations using the GPL flashloader
- * instead of the proprietary CodeWarrior flashloader chunks.
  *
  * License: GPL v3
  */

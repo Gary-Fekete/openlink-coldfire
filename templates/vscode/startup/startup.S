@@ -68,11 +68,13 @@ _start:
     /* Disable interrupts */
     move.w  #0x2700, %sr
 
+    /* Initialize IPSBAR - enable peripheral access at 0x40000000 */
+    move.l  #0x40000001, %d0    /* Base 0x40000000 + Valid bit */
+    move.l  %d0, 0x40000000     /* Write to IPSBAR register */
 
     /* Set up VBR (Vector Base Register) to point to flash */
     move.l  #_vectors, %d0
     movec   %d0, %vbr
-
 
     /* Initialize RAMBAR - enable SRAM at 0x20000000 */
     move.l  #0x20000221, %d0    /* Base 0x20000000, valid, r/w enabled */

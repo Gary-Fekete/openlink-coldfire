@@ -77,20 +77,6 @@ This generates:
 8. Wait for halt
 9. Read result from 0x2000000C
 
-## Current Status
-
-**Note:** The GDB server currently uses the original CodeWarrior flashloader
-(`flashloader_chunks.h`) which has a more complex interface. This clean
-implementation is provided as:
-
-1. Documentation of how flash programming works
-2. A tested alternative for future use
-3. Reference for porting to other ColdFire variants
-
-To switch the GDB server to use this flashloader, the flash programming
-functions in `m68k-gdbserver.c` would need to be updated to use the
-simpler parameter block interface.
-
 ## License
 
 GPL v3 - See LICENSE file in parent directory.

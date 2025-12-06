@@ -306,6 +306,7 @@ static int read_cpu_register(int reg_num, uint32_t *value) {
     if (reg_num == REG_A7) {
         int r = cmd_07_13(g_usb_dev, 0x218F, value);
         if (r != 0 || *value == 0) {
+            printf("A7 read: r=%d, value=0x%08X, using cached=0x%08X\n", r, *value, g_cached_sp);
             *value = g_cached_sp;  /* Fall back to cached value */
         }
         return 0;
@@ -336,6 +337,13 @@ static int read_cpu_register(int reg_num, uint32_t *value) {
 
 /* Write a ColdFire CPU register via BDM
  * Uses cmd_write_pc() for PC (includes sync), cmd_07_14_write_bdm_reg for others
+ *
+ * BDM Store (write) register addresses:
+ *   D0-D7: 0x0180-0x0187
+ *   A0-A6: 0x0188-0x018E
+ *   A7:    0x018F (active stack pointer)
+ *   PC:    0x080F (handled by cmd_write_pc)
+ *   SR:    0x080E
  */
 static int write_cpu_register(int reg_num, uint32_t value) {
     /* For PC, use cmd_write_pc() which includes proper sync command */
@@ -346,11 +354,11 @@ static int write_cpu_register(int reg_num, uint32_t value) {
     uint16_t bdm_reg;
 
     if (reg_num >= REG_D0 && reg_num <= REG_D7) {
-        /* D0-D7: BDM registers 0x0800-0x0807 */
-        bdm_reg = 0x0800 + reg_num;
+        /* D0-D7: BDM store registers 0x0180-0x0187 */
+        bdm_reg = 0x0180 + reg_num;
     } else if (reg_num >= REG_A0 && reg_num <= REG_A7) {
-        /* A0-A7: BDM registers 0x0808-0x080F */
-        bdm_reg = 0x0808 + (reg_num - REG_A0);
+        /* A0-A7: BDM store registers 0x0188-0x018F */
+        bdm_reg = 0x0188 + (reg_num - REG_A0);
     } else if (reg_num == REG_SR) {
         bdm_reg = 0x080E;  /* SR */
     } else {
@@ -525,29 +533,42 @@ static int handle_write_memory(int sock, const char *data) {
 #define CSR_READ    0x2D80      /* Read CSR address */
 #define CSR_WRITE   0x2C80      /* Write CSR address */
 
-/* ColdFire V2 Debug Module Registers */
-/* PC Breakpoint Registers (4 hardware breakpoints) */
-#define PBR0_READ   0x2D88      /* Read PC Breakpoint Register 0 */
-#define PBR0_WRITE  0x2C88      /* Write PC Breakpoint Register 0 */
+/* ColdFire V2 Debug Module Registers (DRc[4-0])
+ * From MCF52235 Reference Manual Table 31-3
+ * These are the 5-bit debug register codes (DRc)
+ */
+#define DEBUG_REG_CSR   0x00    /* Configuration/Status Register */
+#define DEBUG_REG_BAAR  0x05    /* BDM Address Attribute Register */
+#define DEBUG_REG_AATR  0x06    /* Address Attribute Trigger Register */
+#define DEBUG_REG_TDR   0x07    /* Trigger Definition Register */
+#define DEBUG_REG_PBR0  0x08    /* PC Breakpoint Register 0 */
+#define DEBUG_REG_PBMR  0x09    /* PC Breakpoint Mask Register */
+#define DEBUG_REG_ABHR  0x0C    /* Address Breakpoint High Register */
+#define DEBUG_REG_ABLR  0x0D    /* Address Breakpoint Low Register */
+#define DEBUG_REG_DBR   0x0E    /* Data Breakpoint Register */
+#define DEBUG_REG_DBMR  0x0F    /* Data Breakpoint Mask Register */
+#define DEBUG_REG_PBR1  0x18    /* PC Breakpoint Register 1 */
+#define DEBUG_REG_PBR2  0x1A    /* PC Breakpoint Register 2 */
+#define DEBUG_REG_PBR3  0x1B    /* PC Breakpoint Register 3 */
+
+/* Legacy defines - kept for reference but NOT USED */
+#define PBR0_READ   0x2D88      /* WRONG - do not use */
+#define PBR0_WRITE  0x2C88      /* WRONG - do not use */
 #define PBR1_READ   0x2D89
 #define PBR1_WRITE  0x2C89
 #define PBR2_READ   0x2D8A
 #define PBR2_WRITE  0x2C8A
 #define PBR3_READ   0x2D8B
 #define PBR3_WRITE  0x2C8B
-
-/* Trigger Definition Register */
-#define TDR_READ    0x2D87
-#define TDR_WRITE   0x2C87
-
-/* Address Breakpoint Registers (for watchpoints) */
-#define ABLR_READ   0x2D8C      /* Address Bound Low Register */
+#define TDR_READ    0x2D87      /* WRONG - do not use */
+#define TDR_WRITE   0x2C87      /* WRONG - do not use */
+#define ABLR_READ   0x2D8C
 #define ABLR_WRITE  0x2C8C
-#define ABHR_READ   0x2D8D      /* Address Bound High Register */
+#define ABHR_READ   0x2D8D
 #define ABHR_WRITE  0x2C8D
-#define DBR_READ    0x2D8E      /* Data Breakpoint Register */
+#define DBR_READ    0x2D8E
 #define DBR_WRITE   0x2C8E
-#define DBMR_READ   0x2D8F      /* Data Breakpoint Mask Register */
+#define DBMR_READ   0x2D8F
 #define DBMR_WRITE  0x2C8F
 
 /* TDR bit definitions */
@@ -575,6 +596,12 @@ static int handle_write_memory(int sock, const char *data) {
 #define MAX_HW_BREAKPOINTS 4
 static uint32_t hw_breakpoints[MAX_HW_BREAKPOINTS] = {0, 0, 0, 0};
 static int hw_breakpoint_used[MAX_HW_BREAKPOINTS] = {0, 0, 0, 0};
+
+/* Shadow copy of TDR (Trigger Definition Register)
+ * TDR is WRITE-ONLY from the programming model, so we must track its state ourselves.
+ * This shadow is updated whenever we modify TDR.
+ */
+static uint32_t tdr_shadow = 0;
 
 /* Software breakpoint tracking */
 #define MAX_SW_BREAKPOINTS 32
@@ -652,26 +679,60 @@ static int wait_for_halt(int timeout_ms) {
  * ColdFire V2 Debug Module supports 4 PC breakpoints (PBR0-PBR3)
  */
 
-/* Write to a PC Breakpoint Register */
+/* PBR register offsets indexed by slot number
+ * From MCF52235 RM Table 31-3: PBR0=0x08, PBR1=0x18, PBR2=0x1A, PBR3=0x1B
+ */
+static const uint16_t pbr_reg[4] = {
+    DEBUG_REG_PBR0, DEBUG_REG_PBR1, DEBUG_REG_PBR2, DEBUG_REG_PBR3
+};
+
+/* Write to a PC Breakpoint Register
+ * PBR0=0x08, PBR1=0x18, PBR2=0x1A, PBR3=0x1B (from Table 31-3)
+ * Uses WDMREG command via cmd_07_14_write_debug_reg
+ * NOTE: PBR registers are WRITE-ONLY - cannot read back to verify!
+ */
 static int write_pbr(int index, uint32_t addr) {
-    uint16_t write_reg = PBR0_WRITE + index;
-    return cmd_07_14_write_bdm_reg(g_usb_dev, write_reg, addr);
+    if (index < 0 || index > 3) return -1;
+    int r = cmd_07_14_write_debug_reg(g_usb_dev, pbr_reg[index], addr);
+    if (r != 0) return r;
+    /* Sync required after debug register writes */
+    return cmd_07_12(g_usb_dev, 0xFFFF);
 }
 
-/* Read from a PC Breakpoint Register */
+/* Read from a PC Breakpoint Register
+ * Try using cmd_07_13 with combined window+register format
+ */
+/* NOTE: PBR registers are WRITE-ONLY from the programming model.
+ * This function is kept for reference but will return stale/garbage values.
+ * Do NOT rely on this for verification - use the hw_breakpoints[] shadow instead.
+ */
 static int read_pbr(int index, uint32_t *addr) {
-    uint16_t read_reg = PBR0_READ + index;
-    return cmd_07_13(g_usb_dev, read_reg, addr);
+    (void)index;
+    (void)addr;
+    /* PBR registers are write-only - cannot read back */
+    return -1;
 }
 
-/* Read the Trigger Definition Register */
+/* NOTE: TDR is WRITE-ONLY from the programming model.
+ * This function is kept for reference but will return stale/garbage values.
+ * Do NOT rely on this - use the tdr_shadow global instead.
+ */
 static int read_tdr(uint32_t *value) {
-    return cmd_07_13(g_usb_dev, TDR_READ, value);
+    (void)value;
+    /* TDR is write-only - cannot read back */
+    return -1;
 }
 
-/* Write the Trigger Definition Register */
+/* Write the Trigger Definition Register
+ * TDR is at DRc=0x07 in debug register space
+ * Uses WDMREG command via cmd_07_14_write_debug_reg
+ * NOTE: TDR is WRITE-ONLY - cannot read back to verify!
+ */
 static int write_tdr(uint32_t value) {
-    return cmd_07_14_write_bdm_reg(g_usb_dev, TDR_WRITE, value);
+    int r = cmd_07_14_write_debug_reg(g_usb_dev, DEBUG_REG_TDR, value);
+    if (r != 0) return r;
+    /* Sync required after debug register writes */
+    return cmd_07_12(g_usb_dev, 0xFFFF);
 }
 
 /* Set a hardware breakpoint at the given address
@@ -692,34 +753,36 @@ static int set_hw_breakpoint(uint32_t addr) {
         return -1;
     }
 
-    /* Write the breakpoint address to PBRn */
+    /* Write the breakpoint address to PBRn
+     * NOTE: PBR registers are write-only - cannot verify!
+     */
+    printf("DEBUG: Writing PBR%d = 0x%08X (DRc=0x%02X)\n", slot, addr, pbr_reg[slot]);
     if (write_pbr(slot, addr) != 0) {
         printf("Failed to write PBR%d\n", slot);
         return -1;
     }
 
-    /* Update TDR to enable PC breakpoints (if not already enabled) */
-    uint32_t tdr = 0;
-    read_tdr(&tdr);
-
-    /* Enable PC breakpoint triggering:
-     * - TRC_HALT: Halt processor on trigger
-     * - EBL1: Enable breakpoint level 1
-     * - EPC1: Enable PC breakpoint level 1
-     * - Set LPC bits for which PBRs are active
+    /* Build TDR value to enable PC breakpoint triggering:
+     * - TRC_HALT: Halt processor on trigger (bit 30)
+     * - EBL1: Enable breakpoint level 1 (bit 13)
+     * - EPC1: Enable PC level 1 (bit 9)
+     * - Set LPC bits for which PBRs are active (bits 24-27)
+     *
+     * NOTE: TDR is write-only - we use the global tdr_shadow to track state
      */
-    tdr |= TDR_TRC_HALT | TDR_EBL1 | TDR_EPC1;
+    tdr_shadow |= TDR_TRC_HALT | TDR_EBL1 | TDR_EPC1;
     /* Enable the specific PBR slot in bits 24-27 */
-    tdr |= (1 << (24 + slot));
+    tdr_shadow |= (1 << (24 + slot));
 
-    if (write_tdr(tdr) != 0) {
+    printf("DEBUG: Writing TDR = 0x%08X (DRc=0x%02X)\n", tdr_shadow, DEBUG_REG_TDR);
+    if (write_tdr(tdr_shadow) != 0) {
         printf("Failed to write TDR\n");
         return -1;
     }
 
     hw_breakpoints[slot] = addr;
     hw_breakpoint_used[slot] = 1;
-    printf("Hardware breakpoint %d set at 0x%08X (TDR=0x%08X)\n", slot, addr, tdr);
+    printf("Hardware breakpoint %d set at 0x%08X (TDR=0x%08X)\n", slot, addr, tdr_shadow);
 
     return slot;
 }
@@ -745,10 +808,10 @@ static int clear_hw_breakpoint(uint32_t addr) {
     /* Clear the PBR register */
     write_pbr(slot, 0);
 
-    /* Update TDR to disable this breakpoint slot */
-    uint32_t tdr = 0;
-    read_tdr(&tdr);
-    tdr &= ~(1 << (24 + slot));
+    /* Update TDR shadow to disable this breakpoint slot
+     * NOTE: TDR is write-only, so we use the shadow copy
+     */
+    tdr_shadow &= ~(1 << (24 + slot));
 
     /* If no more breakpoints active, disable PC breakpoint triggering */
     int any_active = 0;
@@ -759,10 +822,10 @@ static int clear_hw_breakpoint(uint32_t addr) {
         }
     }
     if (!any_active) {
-        tdr &= ~(TDR_EBL1 | TDR_EPC1);
+        tdr_shadow &= ~(TDR_EBL1 | TDR_EPC1);
     }
 
-    write_tdr(tdr);
+    write_tdr(tdr_shadow);
 
     hw_breakpoints[slot] = 0;
     hw_breakpoint_used[slot] = 0;
@@ -957,34 +1020,34 @@ static int set_watchpoint(uint32_t addr, uint32_t length, watchpoint_type_t type
         return -1;
     }
 
-    /* Configure TDR for address range watchpoint */
-    uint32_t tdr = 0;
-    read_tdr(&tdr);
+    /* Configure TDR for address range watchpoint
+     * NOTE: TDR is write-only, so we use the global shadow copy
+     */
 
     /* Set trigger to halt on address range match */
-    tdr |= TDR_TRC_HALT;    /* Halt processor on trigger */
-    tdr |= TDR_EBL1;        /* Enable breakpoint level 1 */
-    tdr |= TDR_EAR1;        /* Enable address range level 1 */
-    tdr |= TDR_EAL_INSIDE;  /* Trigger when address is inside range */
+    tdr_shadow |= TDR_TRC_HALT;    /* Halt processor on trigger */
+    tdr_shadow |= TDR_EBL1;        /* Enable breakpoint level 1 */
+    tdr_shadow |= TDR_EAR1;        /* Enable address range level 1 */
+    tdr_shadow |= TDR_EAL_INSIDE;  /* Trigger when address is inside range */
 
     /* Set read/write mode based on watchpoint type */
-    tdr &= ~TDR_DRW_RW;     /* Clear R/W bits first */
+    tdr_shadow &= ~TDR_DRW_RW;     /* Clear R/W bits first */
     switch (type) {
         case WP_TYPE_WRITE:
-            tdr |= TDR_DRW_WRITE;
+            tdr_shadow |= TDR_DRW_WRITE;
             break;
         case WP_TYPE_READ:
-            tdr |= TDR_DRW_READ;
+            tdr_shadow |= TDR_DRW_READ;
             break;
         case WP_TYPE_ACCESS:
-            tdr |= TDR_DRW_RW;
+            tdr_shadow |= TDR_DRW_RW;
             break;
         default:
             printf("Invalid watchpoint type\n");
             return -1;
     }
 
-    if (write_tdr(tdr) != 0) {
+    if (write_tdr(tdr_shadow) != 0) {
         printf("Failed to write TDR\n");
         return -1;
     }
@@ -996,7 +1059,7 @@ static int set_watchpoint(uint32_t addr, uint32_t length, watchpoint_type_t type
     watchpoints[0].active = 1;
 
     printf("Watchpoint set: 0x%08X-0x%08X (type=%d, TDR=0x%08X)\n",
-           addr_low, addr_high, type, tdr);
+           addr_low, addr_high, type, tdr_shadow);
 
     return 0;
 }
@@ -1024,14 +1087,14 @@ static int clear_watchpoint(uint32_t addr, uint32_t length, watchpoint_type_t ty
     write_ablr(0);
     write_abhr(0);
 
-    /* Update TDR to disable address range triggering */
-    uint32_t tdr = 0;
-    read_tdr(&tdr);
+    /* Update TDR shadow to disable address range triggering
+     * NOTE: TDR is write-only, so we use the global shadow copy
+     */
 
     /* Clear address range and R/W bits */
-    tdr &= ~TDR_EAR1;       /* Disable address range */
-    tdr &= ~TDR_EAL_MASK;   /* Clear address level mode */
-    tdr &= ~TDR_DRW_RW;     /* Clear R/W bits */
+    tdr_shadow &= ~TDR_EAR1;       /* Disable address range */
+    tdr_shadow &= ~TDR_EAL_MASK;   /* Clear address level mode */
+    tdr_shadow &= ~TDR_DRW_RW;     /* Clear R/W bits */
 
     /* If no more breakpoints/watchpoints, disable triggering entirely */
     int any_bp_active = 0;
@@ -1042,10 +1105,10 @@ static int clear_watchpoint(uint32_t addr, uint32_t length, watchpoint_type_t ty
         }
     }
     if (!any_bp_active) {
-        tdr &= ~(TDR_TRC_HALT | TDR_EBL1);
+        tdr_shadow &= ~(TDR_TRC_HALT | TDR_EBL1);
     }
 
-    write_tdr(tdr);
+    write_tdr(tdr_shadow);
 
     /* Clear tracking */
     watchpoints[0].addr = 0;
@@ -1063,15 +1126,15 @@ static uint32_t check_watchpoint_hit(void) {
         return 0;
     }
 
-    /* Read TDR to check if address range trigger fired
-     * When a watchpoint triggers, the debug module halts the CPU.
-     * We check if we're halted and the watchpoint was armed.
+    /* NOTE: TDR is write-only, so we can't read it to check trigger status.
+     * Instead, we check our shadow copy to see if a watchpoint was armed.
+     * If the target halted and we have an active watchpoint with EAR1 set
+     * in our shadow, we assume the watchpoint triggered.
+     *
+     * In the future, we could potentially read CSR (which IS readable via BDM)
+     * to get more precise trigger information.
      */
-    uint32_t tdr = 0;
-    read_tdr(&tdr);
-
-    /* If EAR1 and halt are still set, the watchpoint likely triggered */
-    if ((tdr & TDR_EAR1) && (tdr & TDR_TRC_HALT)) {
+    if ((tdr_shadow & TDR_EAR1) && (tdr_shadow & TDR_TRC_HALT)) {
         printf("Watchpoint may have triggered at 0x%08X\n", watchpoints[0].addr);
         return watchpoints[0].addr;
     }
@@ -1188,17 +1251,19 @@ static int handle_continue(int sock, const char *data) {
         write_cpu_register(REG_PC, addr);
     }
 
-    /* Clear SSM bit before continuing (ensure normal execution) */
-    uint32_t csr = 0;
-    if (read_csr(&csr) == 0) {
-        csr &= ~CSR_SSM;
-        write_csr(csr);
-    }
+    /* Debug: read PC before continue */
+    uint32_t pc_before = 0;
+    cmd_read_pc(g_usb_dev, &pc_before);
+    printf("DEBUG continue: PC before GO = 0x%08X\n", pc_before);
 
-    /* Send BDM GO command to resume target */
-    printf("Resuming target execution...\n");
-    cmd_07_02_bdm_go(g_usb_dev);
+    /* Enter BDM mode 0xF8 and send BDM GO to resume target */
+    cmd_enter_mode(g_usb_dev, 0xF8);
+    int go_result = cmd_07_02_bdm_go(g_usb_dev);  /* BDM GO - start execution from current PC */
+    printf("DEBUG continue: BDM GO returned %d\n", go_result);
     g_target_halted = 0;
+
+    /* Give target time to start executing before polling for halt */
+    usleep(100000);  /* 100ms delay */
 
     /* Wait for target to halt (breakpoint, exception, or user interrupt)
      * Poll for halt status with timeout - target should halt on:
@@ -1212,10 +1277,29 @@ static int handle_continue(int sock, const char *data) {
         usleep(1000);  /* 1ms between polls */
 
         uint8_t is_frozen = 0;
-        if (cmd_bdm_freeze(g_usb_dev, &is_frozen) == 0 && is_frozen) {
-            printf("Target halted after %d ms\n", i);
+        int poll_result = cmd_bdm_freeze(g_usb_dev, &is_frozen);
+
+        if (poll_result == 0 && is_frozen) {
+            printf("Target halted after %d ms (freeze detected)\n", i);
             halted = 1;
             break;
+        }
+
+        /* Every 10ms, check CSR for BKPT bit (hardware breakpoint trigger).
+         * cmd_bdm_freeze() doesn't detect hardware breakpoint halts reliably,
+         * but CSR bit 24 (BKPT) is set when a hardware breakpoint triggers.
+         */
+        if ((i % 10) == 9) {
+            cmd_enter_mode(g_usb_dev, 0xF8);
+            uint32_t csr = 0;
+            if (read_csr(&csr) == 0) {
+                int bkpt_bit = (csr >> 24) & 1;
+                if (bkpt_bit) {
+                    printf("Target halted after %d ms (BKPT detected, CSR=0x%08X)\n", i, csr);
+                    halted = 1;
+                    break;
+                }
+            }
         }
     }
 
@@ -1223,14 +1307,35 @@ static int handle_continue(int sock, const char *data) {
         /* Timeout - force halt */
         printf("Continue timeout, forcing halt\n");
         cmd_bdm_halt(g_usb_dev);
+
+        /* Wait for target to actually halt */
+        usleep(10000);  /* 10ms delay */
+
+        /* Re-enter BDM mode after halt to enable register access */
+        cmd_enter_mode(g_usb_dev, 0xF8);
+
+        /* Verify target is now halted */
+        uint8_t is_frozen = 0;
+        for (int i = 0; i < 10; i++) {
+            cmd_bdm_freeze(g_usb_dev, &is_frozen);
+            if (is_frozen) break;
+            usleep(1000);
+        }
+        printf("DEBUG: After halt, is_frozen=%d\n", is_frozen);
+
+        /* Read CSR to see target state */
+        uint32_t csr = 0;
+        read_csr(&csr);
+        printf("DEBUG: CSR after halt = 0x%08X (HALT=%d, BKPT=%d)\n",
+               csr, (csr >> 25) & 1, (csr >> 24) & 1);
+
+        /* Debug: read PC after halt */
+        uint32_t pc_after = 0;
+        cmd_read_pc(g_usb_dev, &pc_after);
+        printf("DEBUG: PC after halt = 0x%08X\n", pc_after);
     }
 
     g_target_halted = 1;
-
-    /* Read PC for debug output */
-    uint32_t pc = 0;
-    read_cpu_register(REG_PC, &pc);
-    printf("Stopped at PC=0x%08X\n", pc);
 
     /* Check if we hit a watchpoint - report with watch reason */
     uint32_t wp_addr = check_watchpoint_hit();
@@ -1519,6 +1624,7 @@ static int handle_query(int sock, const char *data) {
     else if (strncmp(data, "Xfer:memory-map:read:", 21) == 0) {
         /* Memory map - defines flash and RAM regions */
         /* MCF52233: 256KB flash at 0x00000000, 32KB SRAM at 0x20000000 */
+        /* IPSBAR: peripheral registers at 0x40000000 (2MB) */
         /* Flash has 8KB hardware sectors, but we chunk erase/program in 0x800 (2KB) blocks */
         const char *xml =
             "l<?xml version=\"1.0\"?>"
@@ -1529,8 +1635,86 @@ static int handle_query(int sock, const char *data) {
             "<property name=\"blocksize\">0x800</property>"
             "</memory>"
             "<memory type=\"ram\" start=\"0x20000000\" length=\"0x8000\"/>"
+            "<memory type=\"ram\" start=\"0x40000000\" length=\"0x200000\"/>"
             "</memory-map>";
         return send_packet(sock, xml);
+    }
+    else if (strncmp(data, "Rcmd,", 5) == 0) {
+        /* Monitor command: qRcmd,<hex-encoded-command>
+         * Decode the hex string and execute the command
+         */
+        const char *hex = data + 5;
+        char cmd_buf[256];
+        int cmd_len = 0;
+
+        /* Decode hex string to ASCII */
+        while (*hex && *(hex+1) && cmd_len < (int)sizeof(cmd_buf) - 1) {
+            int hi = hex_to_nibble(*hex);
+            int lo = hex_to_nibble(*(hex+1));
+            if (hi < 0 || lo < 0) break;
+            cmd_buf[cmd_len++] = (hi << 4) | lo;
+            hex += 2;
+        }
+        cmd_buf[cmd_len] = '\0';
+
+        printf("Monitor command: '%s'\n", cmd_buf);
+
+        if (strcmp(cmd_buf, "reset") == 0 || strcmp(cmd_buf, "reset halt") == 0) {
+            /* Reset target - set PC and SP from vector table */
+            printf("Monitor reset...\n");
+            fflush(stdout);
+
+            /* Try to read reset vectors from flash */
+            uint32_t reset_sp = 0, reset_pc = 0;
+            cmd_read_memory_long_addr(g_usb_dev, 0x0, &reset_sp);
+            cmd_read_memory_long_addr(g_usb_dev, 0x4, &reset_pc);
+            printf("Vectors: SP=0x%08X, PC=0x%08X\n", reset_sp, reset_pc);
+
+            /* Use cached values or defaults if flash read fails */
+            if (reset_pc == 0xFFFFFFFF || reset_pc == 0) {
+                reset_pc = g_cached_pc ? g_cached_pc : 0x400;
+                printf("Using fallback PC=0x%08X\n", reset_pc);
+            }
+            if (reset_sp == 0xFFFFFFFF || reset_sp == 0) {
+                reset_sp = g_cached_sp ? g_cached_sp : 0x20008000;
+                printf("Using fallback SP=0x%08X\n", reset_sp);
+            }
+            fflush(stdout);
+
+            /* Set SP (A7) - BDM store register is 0x018F for active A7 */
+            /* We're in supervisor mode, so A7 = SSP */
+            cmd_07_14_write_bdm_reg(g_usb_dev, 0x018F, reset_sp);
+
+            /* Set PC last (includes sync) */
+            cmd_write_pc(g_usb_dev, reset_pc);
+
+            g_target_halted = 1;
+            printf("Reset complete: PC=0x%08X, SP=0x%08X\n", reset_pc, reset_sp);
+            fflush(stdout);
+
+            /* Send "Reset OK\n" as hex */
+            return send_packet(sock, "5265736574204f4b0a");
+        }
+        else if (strcmp(cmd_buf, "halt") == 0) {
+            /* Halt target */
+            printf("Halting target...\n");
+            cmd_bdm_halt(g_usb_dev);
+            g_target_halted = 1;
+            return send_packet(sock, "4f4b0a");  /* "OK\n" */
+        }
+        else if (strcmp(cmd_buf, "go") == 0) {
+            /* Resume target execution */
+            printf("Resuming target...\n");
+            cmd_enter_mode(g_usb_dev, 0xF8);
+            cmd_07_02_bdm_go(g_usb_dev);
+            g_target_halted = 0;
+            return send_packet(sock, "4f4b0a");  /* "OK\n" */
+        }
+        else {
+            /* Unknown command */
+            printf("Unknown monitor command: %s\n", cmd_buf);
+            return send_packet(sock, "556e6b6e6f776e20636f6d6d616e640a");  /* "Unknown command\n" */
+        }
     }
 
     /* Unknown query - empty response */
