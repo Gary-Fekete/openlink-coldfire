@@ -43,11 +43,11 @@ int cmd_071b(libusb_device_handle *handle, uint32_t addr, uint16_t length,
              uint8_t *buffer, int buffer_size);
 
 // SRAM-specific read function - extracts longword from interspersed response format
-// CRITICAL: cmd_071b returns SRAM data at offsets 0,7,9,11 (not contiguous)
+// CRUCIAL: cmd_071b returns SRAM data at offsets 0,7,9,11 (not contiguous)
 // Use this for reading 32-bit values from SRAM (0x20000000-0x20007FFF)
 int cmd_071b_read_sram_longword(libusb_device_handle *handle, uint32_t addr, uint32_t *value);
 
-// Memory Window Control - Critical for accessing Flash Module 1 (upper 128KB)
+// Memory Window Control - Crucial for accessing Flash Module 1 (upper 128KB)
 int cmd_set_memory_window(libusb_device_handle *handle, uint32_t window_addr);
 
 // Flashloader Functions

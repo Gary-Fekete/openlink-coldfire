@@ -30,7 +30,7 @@ vscode-coldfire-template/
 
 1. Open this folder in VSCode:
    ```bash
-   code /home/ligma/M52233DEMO/vscode-coldfire-template
+   code /home/username/M52233DEMO/vscode-coldfire-template
    ```
 
 2. Install the C/C++ extension if prompted
@@ -45,7 +45,7 @@ vscode-coldfire-template/
 
 1. Start the GDB server manually (recommended for first time):
    ```bash
-   cd /home/ligma/M52233DEMO
+   cd /home/username/M52233DEMO
    ./m68k-gdbserver -p 3333
    ```
 
@@ -87,7 +87,7 @@ vscode-coldfire-template/
 ### "Connection refused" error
 The GDB server isn't running. Start it manually:
 ```bash
-/home/ligma/M52233DEMO/m68k-gdbserver -p 3333
+/home/username/M52233DEMO/m68k-gdbserver -p 3333
 ```
 
 ### "LIBUSB_ERROR_BUSY"

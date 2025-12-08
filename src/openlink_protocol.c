@@ -12,7 +12,7 @@ void openlink_set_verbose(int level) {
     g_openlink_verbose = level;
 }
 
-// CRITICAL: Global persistent command buffer
+// CRUCIAL: Global persistent command buffer
 // This buffer is NEVER cleared - it preserves leftover response data between
 // commands, which is essential for proper BDM operation.
 // Initialize to zeros ONCE at program start, then reuse forever.
@@ -113,7 +113,7 @@ int send_aa_command(libusb_device_handle *handle, unsigned char *cmd_data, int c
         print_as_ascii(response_buffer + 4, actual_response_len - 4);
     }
 
-    // CRITICAL: Copy response back to cmd_data buffer
+    // CRUCIAL: Copy response back to cmd_data buffer
     // This preserves leftover data for the next command, which is essential
     // for proper BDM operation. Without this, memory windows don't work!
     memcpy(cmd_data, response_buffer, 256);
@@ -206,7 +206,7 @@ int cmd_write_memory_byte_addr(libusb_device_handle *handle, uint32_t addr, uint
     // Data (16-bit format, upper byte is 00 for byte write)
     cmd[12] = 0x00;
     cmd[13] = data;
-    // CRITICAL: Do NOT zero-byte 14-255! They contain leftover response data
+    // CRUCIAL: Do NOT zero-byte 14-255! They contain leftover response data
 
     return send_aa_command(handle, cmd, 256, "Write Memory Byte");
 }
@@ -288,7 +288,7 @@ int cmd_write_memory_word_addr(libusb_device_handle *handle, uint32_t addr, uint
     // Data (2 bytes, big-endian)
     cmd[10] = (data >> 8) & 0xFF;
     cmd[11] = data & 0xFF;
-    // CRITICAL: Do NOT zero-byte 12-255! They contain leftover response data
+    // CRUCIAL: Do NOT zero-byte 12-255! They contain leftover response data
 
     return send_aa_command(handle, cmd, 256, "Write Memory Word");
 }
@@ -374,7 +374,7 @@ int cmd_write_memory_short_addr(libusb_device_handle *handle, uint16_t addr, uin
     cmd[10] = (data >> 8) & 0xFF;
     cmd[11] = data & 0xFF;
 
-    // CRITICAL: Do NOT zero-byte 12-255! They contain leftover response data
+    // CRUCIAL: Do NOT zero-byte 12-255! They contain leftover response data
     // from the previous command.
 
     return send_aa_command(handle, cmd, 256, "Write Memory (16-bit addr)");
@@ -401,12 +401,12 @@ int cmd_write_memory_long_addr(libusb_device_handle *handle, uint32_t addr, uint
     cmd[11] = (data >> 16) & 0xFF;
     cmd[12] = (data >> 8) & 0xFF;
     cmd[13] = data & 0xFF;
-    // CRITICAL: Do NOT zero-byte 14-255! They contain leftover response data
+    // CRUCIAL: Do NOT zero-byte 14-255! They contain leftover response data
 
     return send_aa_command(handle, cmd, 256, "Write Memory Long");
 }
 
-// Set Memory Window - Critical for accessing different flash modules
+// Set Memory Window: Crucial for accessing different flash modules
 // Command 0x07 0x10 discovered from erase-flash.hex capture
 // This command switches which memory region is accessible via 0x07 0x13 reads
 int cmd_set_memory_window(libusb_device_handle *handle, uint32_t window_addr) {
@@ -433,7 +433,7 @@ int cmd_set_memory_window(libusb_device_handle *handle, uint32_t window_addr) {
     cmd[7] = (window_addr >> 16) & 0xFF;
     cmd[8] = (window_addr >> 8) & 0xFF;
     cmd[9] = (window_addr >> 0) & 0xFF;
-    // CRITICAL: Do NOT zero-byte 10-255! They contain leftover response data
+    // CRUCIAL: Do NOT zero-byte 10-255! They contain leftover response data
 
     return send_aa_command(handle, cmd, 256, "Set Memory Window");
 }
@@ -796,7 +796,7 @@ int cmd_071b(libusb_device_handle *handle, uint32_t addr, uint16_t length,
 /**
  * Read longword from SRAM using cmd_071b with proper response extraction.
  *
- * CRITICAL DISCOVERY (2025-11-24): cmd_071b returns SRAM data with interspersed
+ * CRUCIAL DISCOVERY (2025-11-24): cmd_071b returns SRAM data with interspersed
  * status/verification bytes. The actual 4-byte longword is NOT contiguous but
  * appears at specific offsets in the response.
  *
@@ -914,7 +914,7 @@ int cmd_download_block_chunk(libusb_device_handle *handle, uint32_t address, uns
     }
     if (g_openlink_verbose) printf("Sent %d bytes.\n", sent_length);
 
-    // CRITICAL FIX (2025-11-24): Must read response after EACH bb66 upload!
+    // CRUCIAL FIX (2025-11-24): Must read response after EACH bb66 upload!
     // The pcap shows bb66 uploads DO receive "99 66" responses.
     // If we don't drain these, they pile up in the USB buffer and subsequent
     // reads return stale bb66 responses instead of the actual data we requested.
@@ -923,7 +923,7 @@ int cmd_download_block_chunk(libusb_device_handle *handle, uint32_t address, uns
     free(cmd);
 
     // Wait a bit for device to process the upload
-    // CRITICAL: Do NOT try to read a response - bb66 commands don't generate responses.
+    // CRUCIAL: Do NOT try to read a response - bb66 commands don't generate responses.
     // The captures show bb66 commands sent back-to-back without waiting.
     // Trying to read a response causes USB timeouts and corrupts communication.
     usleep(5000);  // 5ms pause between chunks
@@ -994,7 +994,7 @@ int cmd_download_block_single(libusb_device_handle *handle, uint32_t address, un
 
     free(cmd);
 
-    // CRITICAL FIX: bb 66 DOES return a response! (99 66 00 03 ee)
+    // CRUCIAL FIX: bb 66 DOES return a response! (99 66 00 03 ee)
     // Packet capture line 362 shows response after bb 66 transfer
     // Must read this to prevent blocking next command!
 
@@ -1026,7 +1026,7 @@ int cmd_download_block_single(libusb_device_handle *handle, uint32_t address, un
 }
 
 // Bulk Data Download Command (with chunking support)
-// CRITICAL: Uses 1192-byte chunks, not single large transfers!
+// CRUCIAL: Uses 1192-byte chunks, not single large transfers!
 // Commands 146-152 upload the flashloader in 7 separate bb 66 packets
 
 int cmd_download_block(libusb_device_handle *handle, uint32_t address, unsigned char *data, int length) {
@@ -1079,7 +1079,7 @@ int cmd_bdm_resume(libusb_device_handle *handle) {
     cmd[5] = 0x40;
     cmd[6] = 0x58;
     cmd[7] = 0x04;
-    // CRITICAL: Do NOT zero bytes 8-255! They contain leftover response data
+    // CRUCIAL: Do NOT zero bytes 8-255! They contain leftover response data
 
     // Use no-response version because target will be executing code
     return send_aa_command_no_response(handle, cmd, 256, "BDM Resume");
@@ -1095,7 +1095,7 @@ int cmd_bdm_resume(libusb_device_handle *handle) {
  *   fc = BDM mode parameter
  *   0c = GO/Execute command
  *
- * CRITICAL: This must be sent after uploading flashloader and writing parameters
+ * CRUCIAL: This must be sent after uploading flashloader and writing parameters
  * to actually execute the flashloader code!
  */
 int cmd_07_02_bdm_go(libusb_device_handle *handle) {
@@ -1139,7 +1139,7 @@ int cmd_07_14_write_bdm_reg(libusb_device_handle *handle, uint16_t reg, uint32_t
     cmd[4] = 0x07;
     cmd[5] = 0x14;
 
-    // CRITICAL: Window base address 0x28800000
+    // CRUCIAL: Window base address 0x28800000
     // This address window is essential for BDM memory access!
     cmd[6] = 0x28;
     cmd[7] = 0x80;
@@ -1452,7 +1452,7 @@ int cmd_read_memory_block(libusb_device_handle *handle, uint32_t addr, uint8_t *
     cmd[10] = 0x01;  // param1: memory read mode
     cmd[11] = 0x00;  // param2: flags
     // Note: length is 8 bytes total (2+4+2), no third parameter!
-    // CRITICAL: Do NOT zero bytes 12-255! They contain leftover response data
+    // CRUCIAL: Do NOT zero bytes 12-255! They contain leftover response data
 
     // Send command
     int actual_length;
@@ -2101,7 +2101,7 @@ int sram_validation_sequence(libusb_device_handle *handle) {
         if (read_value == MARKER_ADDR) {
     //             printf("  ==> Verification passed!\n");
         } else {
-            fprintf(stderr, "  ⚠ Warning: Expected 0x%08X, got 0x%08X\n", MARKER_ADDR, read_value);
+            fprintf(stderr, "    Warning: Expected 0x%08X, got 0x%08X\n", MARKER_ADDR, read_value);
         }
     }
 
@@ -2250,7 +2250,7 @@ int cmd_read_bdm_reg(libusb_device_handle *handle, uint16_t reg, uint16_t *value
     // Register address (big-endian)
     cmd[6] = (reg >> 8) & 0xFF;
     cmd[7] = reg & 0xFF;
-    // CRITICAL: Do NOT zero bytes 8-255! They contain leftover response data
+    // CRUCIAL: Do NOT zero bytes 8-255! They contain leftover response data
 
     // Send command
     int actual_length;
@@ -2343,7 +2343,7 @@ int cmd_07_11(libusb_device_handle *handle, uint16_t reg, uint8_t p1, uint8_t p2
     cmd[10] = p3;
     cmd[11] = p4;
 
-    // CRITICAL: FORTH IDE uses zero padding (from memset), NOT ff 00!
+    // CRUCIAL: Use zero padding (from memset), NOT ff 00!
     // The memset(cmd, 0, 256) above already provides correct padding
 
     return send_aa_command(handle, cmd, 256, "CMD 07 11");
@@ -2464,7 +2464,7 @@ int cmd_write_pc(libusb_device_handle *handle, uint32_t pc_value) {
  * Command: aa 55 00 08 07 16 08 0f [value:4]
  * This is the exact format used right before BDM GO to set PC.
  *
- * CRITICAL: This is different from cmd_07_14_write_bdm_reg which uses window 0x2880!
+ * CRUCIAL: This is different from cmd_07_14_write_bdm_reg which uses window 0x2880!
  */
 int cmd_07_16_write_pc(libusb_device_handle *handle, uint32_t pc_value) {
     unsigned char *cmd = g_cmd_buffer;
@@ -2512,7 +2512,7 @@ int cmd_07_15(libusb_device_handle *handle, uint16_t reg, uint8_t *params, int p
         cmd[8 + i] = params[i];
     }
 
-    // CRITICAL: FORTH IDE uses zero padding (from memset), NOT ff 00!
+    // CRUCIAL: Use zero padding (from memset), NOT ff 00!
     // The memset(cmd, 0, 256) above already provides correct padding
 
     return send_aa_command(handle, cmd, 256, "CMD 07 15");
@@ -2637,7 +2637,7 @@ int cmd_07_14(libusb_device_handle *handle, uint16_t reg, uint8_t p1, uint8_t p2
 /**
  * Write to target memory using CMD 07 19.
  *
- * CRITICAL: After cmd_07_17 sets up the memory window, this command
+ * CRUCIAL: After cmd_07_17 sets up the memory window, this command
  * operates in FIRE-AND-FORGET mode (no response expected).
  * Sent 293 commands but only receives 7 responses total.
  *
@@ -2647,7 +2647,7 @@ int cmd_07_14(libusb_device_handle *handle, uint16_t reg, uint8_t p1, uint8_t p2
 int cmd_07_19(libusb_device_handle *handle, uint32_t addr, uint32_t data) {
     unsigned char *cmd = g_cmd_buffer; // Use global persistent buffer
 
-    // CRITICAL: Initialize buffer with specific padding pattern!
+    // CRUCIAL: Initialize buffer with specific padding pattern!
     // Observed "02 00 00 00 00 02" repeating pattern, not random garbage
     memset(cmd, 0x00, 256);  // Initialize to zeros first
     // Then set the repeating pattern in padding area (bytes 16-255)
@@ -2680,7 +2680,7 @@ int cmd_07_19(libusb_device_handle *handle, uint32_t addr, uint32_t data) {
     cmd[15] = data & 0xFF;
 
     // ========================================================================
-    // CRITICAL: cmd_07_19 uses 0x00 padding (from memset), NOT ff 00 pattern!
+    // CRUCIAL: cmd_07_19 uses 0x00 padding (from memset), NOT ff 00 pattern!
     // ========================================================================
     // Packet captures show cmd_07_19 with all-zero padding:
     // aa 55 00 0c 07 19 00 04 20 00 01 00 ca fe ba be 00 00 00 00 00 00...
@@ -2715,7 +2715,7 @@ int cmd_07_10(libusb_device_handle *handle, uint16_t reg) {
     cmd[7] = (reg >> 8) & 0xFF;
     cmd[8] = reg & 0xFF;
 
-    // CRITICAL: cmd_07_10 DOES send a response (discovered from USB hangs!)
+    // CRUCIAL: cmd_07_10 DOES send a response (discovered from USB hangs!)
     // Response is very short (3-5 bytes) and doesn't follow standard 99 66 format
     // We must read it to prevent USB buffer saturation and hangs
     return send_aa_command(handle, cmd, 256, "CMD 07 10");
@@ -2930,7 +2930,7 @@ int cmd_07_13(libusb_device_handle *handle, uint16_t reg, uint32_t *value) {
  * SRAM writes via 16-bit addressing. This is the SAME sequence used in
  * target_init_full() Phase 8 and test_show_responses.c.
  *
- * CRITICAL: This is NOT the same as cmd_07_17! This is the full sequence:
+ * CRUCIAL: This is NOT the same as cmd_07_17! This is the full sequence:
  *   cmd_07_12 → cmd_07_13 → cmd_07_11 (×3) → cmd_07_15 (×2) → cmd_07_12
  *
  * Must be called BEFORE writing flashloader parameters to SRAM!
@@ -3059,7 +3059,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
         return -1;
     }
 
-    // CRITICAL: Call this TWICE!
+    // CRUCIAL: Call this TWICE!
     r = cmd_enable_memory_access(handle, 0x00);
     if (r != 0) {
         fprintf(stderr, "**FAILED to enable memory access (2nd call)\n");
@@ -3134,7 +3134,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
 
     // CIR will be read after system configuration when peripheral access is enabled
 
-    // CRITICAL: Sends THREE cmd 07 14 commands before SRAM access works!
+    // CRUCIAL: Sends THREE cmd 07 14 commands before SRAM access works!
     // All three use window base 0x28800000
     printf("\nInitializing BDM registers using cmd 07 14 with window base 0x28800000...\n");
 
@@ -3147,7 +3147,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     }
 
     // Register 0x0C05 (RAMBAR) = 0x20000221 (from register dump)
-    // Bit 9 (0x200) appears to be critical for SRAM access!
+    // Bit 9 (0x200) appears to be CRUCIAL for SRAM access!
     printf("Writing RAMBAR (0x0C05) = 0x20000221...\n");
     r = cmd_07_14_write_bdm_reg(handle, 0x0C05, 0x20000221);
     if (r != 0) {
@@ -3165,7 +3165,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
 
     //     printf("==> BDM registers configured (0x080E, RAMBAR 0x0C05, 0x080F) with window base 0x28800000\n");
 
-    // CRITICAL: Do a read from 0x2188 BEFORE the first SRAM write!
+    // CRUCIAL: Do a read from 0x2188 BEFORE the first SRAM write!
     // This might "prime" the BDM address mapping
     printf("Priming BDM address mapping with read from 0x2188...\n");
     uint32_t dummy_value;
@@ -3177,7 +3177,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     }
 
     // Initialize FLASHBAR (Flash base address register)
-    // From M52233DEMO.cfg: writecontrolreg 0x0C04 0x00000061
+    // writecontrolreg 0x0C04 0x00000061
     printf("Initializing FLASHBAR (Flash)...\n");
     r = cmd_write_bdm_reg(handle, 0x0C04, 0x00000061);
     if (r != 0) {
@@ -3186,7 +3186,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     }
     //     printf("==> FLASHBAR = 0x00000061 (Flash at 0x00000000 enabled)\n");
 
-    // System Configuration (CRITICAL - required before RAM test!)
+    // System Configuration (CRUCIAL - required before RAM test!)
     printf("\nConfiguring system registers...\n");
 
     // Read clock configuration register (Line 23 from capture)
@@ -3213,7 +3213,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
         fprintf(stderr, "Warning: **FAILED to read system config register\n");
     }
 
-    // Write system configuration (Line 26) - CRITICAL!
+    // Write system configuration (Line 26) - CRUCIAL!
     printf("Writing system configuration...\n");
     uint8_t write_params[] = {0x18, 0x00, 0x40, 0x10, 0x00, 0x74, 0x00, 0x0F};
     r = cmd_07_15(handle, 0x1800, write_params + 2, 6);  // Pass remaining parameters
@@ -3234,7 +3234,7 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     // Phase 5: RAM Test
     //     printf("=== Phase 5: RAM Test ===\n");
 
-    // CRITICAL: Use address 0x00002088, NOT 0x20002088!
+    // CRUCIAL: Use address 0x00002088, NOT 0x20002088!
     // This is in low memory range, not high SRAM range
     uint32_t test_addr = 0x00002088;  // Test address (Use 0x2088 which maps to 0x00002088)
     uint32_t test_pattern1 = 0x12345678;
@@ -3258,8 +3258,8 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
     if (read_value != test_pattern1) {
         fprintf(stderr, "WARNING: RAM test pattern mismatch! Expected 0x%08X, got 0x%08X\n", test_pattern1, read_value);
         fprintf(stderr, "NOTE: Uses 16-bit addresses for RAM test, we use 32-bit.\n");
-        fprintf(stderr, "This may not be critical for flash operations. Continuing anyway...\n");
-        // Don't fail - RAM test format mismatch is not critical
+        fprintf(stderr, "This may not be crucial for flash operations. Continuing anyway...\n");
+        // Don't fail - RAM test format mismatch is not crucial
     } else {
     //         printf("==> Test pattern 1 verified\n");
 
@@ -3304,11 +3304,11 @@ int target_init_full(libusb_device_handle *handle, uint32_t *flash_size_kb) {
         return -1;
     }
 
-    // CRITICAL: 50ms delay after last Enter Mode 0xF8 before memory windows!
+    // CRUCIAL: 50ms delay after last Enter Mode 0xF8 before memory windows!
     printf("Waiting 50ms for BDM to settle...\n");
     usleep(50000);
 
-    // Phase 8: Memory Window Setup (CRITICAL FOR SRAM ACCESS)
+    // Phase 8: Memory Window Setup (CRUCIAL FOR SRAM ACCESS)
     printf("Configuring memory windows for SRAM access via short addresses...\n");
 
     r = cmd_07_12(handle, 0xFFFF);
