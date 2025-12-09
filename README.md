@@ -128,7 +128,7 @@ sudo make install-udev
 
 ## IDE Integration
 
-### Eclipse CDT
+### Eclipse IDE for Embedded C/C++ Developers
 See `templates/eclipse/` for a ready-to-use Eclipse project template with:
 - Pre-configured m68k-elf toolchain settings
 - GDB Hardware Debugging launch configuration
@@ -298,3 +298,4 @@ Copyright (C) 2025 Gary Fekete
 - No proprietary code is included
 - Flashloader implementation is original GPL v3 code
 - MCF5223x register definitions derived from public datasheets
+
