@@ -128,7 +128,6 @@ m68k-elf-gdb firmware.elf \
   -ex "continue"
 ```
 
-## OpenLink ColdFire Capabilities
 
 ## OpenLink ColdFire Capabilities
 |       Feature        | Number |           Notes            |
@@ -137,4 +136,5 @@ m68k-elf-gdb firmware.elf \
 | Software Breakpoints |   32   | RAM only, uses HALT opcode |
 |     Watchpoints      |   1    |     Read/write/access      |
 |   Halt Detection     |  ~9ms  |   Fast CSR BKPT polling    |
+
 
